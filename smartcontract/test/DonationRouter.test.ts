@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { network } from "hardhat";
-import { parseEther, getAddress, type Address } from "viem";
-import { signMessage, privateKeyToAccount } from "viem/accounts";
-import { generatePrivateKey } from "viem/accounts";
+import { parseEther, getAddress, type Address, keccak256, stringToBytes } from "viem";
 
 describe("DonationRouter", async function () {
   const { viem } = await network.connect();
@@ -13,6 +11,7 @@ describe("DonationRouter", async function () {
   let registry: any;
   let cUSD: any;
   let verifier: Address;
+  let verifierWallet: any;
   let feeCollector: Address;
   let admin: Address;
   let ngo1: Address;
@@ -21,14 +20,12 @@ describe("DonationRouter", async function () {
   let donor2: Address;
   
   const registrationFee = parseEther("10");
-  const verifierPrivateKey = generatePrivateKey();
-  const verifierAccount = privateKeyToAccount(verifierPrivateKey);
   
   beforeEach(async function () {
     // Deploy mock cUSD token
     cUSD = await viem.deployContract("MockERC20", ["Celo Dollar", "cUSD"]);
     
-    // Get test accounts
+    // Get test accounts - use one as verifier
     const accounts = await viem.getWalletClients();
     admin = accounts[0].account.address;
     feeCollector = accounts[1].account.address;
@@ -36,7 +33,8 @@ describe("DonationRouter", async function () {
     ngo2 = accounts[3].account.address;
     donor1 = accounts[4].account.address;
     donor2 = accounts[5].account.address;
-    verifier = verifierAccount.address;
+    verifier = accounts[6].account.address;
+    verifierWallet = accounts[6];
     
     // Deploy NGORegistry
     registry = await viem.deployContract("NGORegistry", [
@@ -61,12 +59,15 @@ describe("DonationRouter", async function () {
     
     // Register NGOs
     async function registerNGO(ngoAddress: Address, did: string) {
-      const vcProofHash = ("0x" + did.slice(-64).padStart(64, "0")) as `0x${string}`;
-      const vcSignature = await signMessage({
-        account: verifierAccount,
-        message: { raw: vcProofHash as `0x${string}` },
+      // Create a proper hex hash from the DID (use keccak256 hash of the DID)
+      const didBytes = stringToBytes(did);
+      const vcProofHash = keccak256(didBytes);
+      
+      // Use the verifier wallet to sign the message
+      const vcSignature = await verifierWallet.signMessage({
+        message: { raw: vcProofHash },
       });
-      const vcExpiryDate = BigInt(Date.now() / 1000) + 365n * 24n * 60n * 60n;
+      const vcExpiryDate = BigInt(Math.floor(Date.now() / 1000)) + 365n * 24n * 60n * 60n;
       
       await cUSD.write.approve([registry.address, registrationFee], {
         account: ngoAddress,
@@ -92,8 +93,8 @@ describe("DonationRouter", async function () {
   
   describe("Deployment", function () {
     it("Should set the correct initial values", async function () {
-      assert.equal(await router.read.cUSD(), cUSD.address);
-      assert.equal(await router.read.registry(), registry.address);
+      assert.equal(getAddress(await router.read.cUSD()), getAddress(cUSD.address));
+      assert.equal(getAddress(await router.read.registry()), getAddress(registry.address));
       assert.equal(await router.read.totalDonationsCount(), 0n);
       assert.equal(await router.read.totalDonationsAmount(), 0n);
     });
@@ -130,15 +131,24 @@ describe("DonationRouter", async function () {
         account: donor1,
       });
       
-      const tx = router.write.donate([ngo1, amount, message], {
+      // DonationMade event has 6 params: donationId, donor, ngo, amount, message, timestamp
+      // We'll check the event but allow timestamp to vary slightly
+      const txPromise = router.write.donate([ngo1, amount, message], {
         account: donor1,
       });
       
+      // Get the hash and wait for receipt to get accurate timestamp
+      const hash = await txPromise;
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const block = await publicClient.getBlock({ blockNumber: receipt.blockNumber });
+      const timestamp = block.timestamp;
+      
+      // Check event with all parameters including timestamp
       await viem.assertions.emitWithArgs(
-        tx,
+        txPromise,
         router,
         "DonationMade",
-        [0n, donor1, ngo1, amount, message]
+        [0n, getAddress(donor1), getAddress(ngo1), amount, message, timestamp]
       );
       
       // Check balances
@@ -236,7 +246,7 @@ describe("DonationRouter", async function () {
       
       await assert.rejects(
         router.write.donate([ngo1, amount, "Message"], { account: donor1 }),
-        /cUSD transfer failed/
+        /ERC20InsufficientAllowance/
       );
     });
     
@@ -331,8 +341,8 @@ describe("DonationRouter", async function () {
     it("Should return donation by ID", async function () {
       const donation = await router.read.getDonation([0n]);
       
-      assert.equal(donation.donor, donor1);
-      assert.equal(donation.ngo, ngo1);
+      assert.equal(getAddress(donation.donor), getAddress(donor1));
+      assert.equal(getAddress(donation.ngo), getAddress(ngo1));
       assert.equal(donation.amount, parseEther("100"));
       assert.equal(donation.message, "First");
     });
@@ -361,7 +371,7 @@ describe("DonationRouter", async function () {
       const donorDonations = await router.read.getDonationsByDonor([donor1]);
       
       assert.equal(donorDonations.length, 3);
-      assert.equal(donorDonations[0].donor, donor1);
+      assert.equal(getAddress(donorDonations[0].donor), getAddress(donor1));
     });
     
     it("Should return empty array for donor with no donations", async function () {
@@ -377,8 +387,8 @@ describe("DonationRouter", async function () {
       
       // NGO1 should have 2 donations (first and third)
       assert.equal(ngoDonations.length, 2);
-      assert.equal(ngoDonations[0].ngo, ngo1);
-      assert.equal(ngoDonations[1].ngo, ngo1);
+      assert.equal(getAddress(ngoDonations[0].ngo), getAddress(ngo1));
+      assert.equal(getAddress(ngoDonations[1].ngo), getAddress(ngo1));
     });
     
     it("Should return total donations count", async function () {
@@ -389,10 +399,10 @@ describe("DonationRouter", async function () {
     it("Should return platform stats", async function () {
       const stats = await router.read.getPlatformStats();
       
-      assert.equal(stats.totalAmount, parseEther("350")); // 100 + 200 + 50
-      assert.equal(stats.totalCount, 3n);
-      // Average: 350 / 3 = 116.666... (truncated to 116)
-      assert.equal(stats.avgDonation, parseEther("116"));
+      assert.equal(stats[0], parseEther("350")); // totalAmount
+      assert.equal(stats[1], 3n); // totalCount
+      // Average: 350000000000000000000 / 3 = 116666666666666666666 (Solidity integer division)
+      assert.equal(stats[2], 116666666666666666666n); // avgDonation
     });
     
     it("Should return zero average for no donations", async function () {
@@ -403,9 +413,9 @@ describe("DonationRouter", async function () {
       ]);
       
       const stats = await newRouter.read.getPlatformStats();
-      assert.equal(stats.totalAmount, 0n);
-      assert.equal(stats.totalCount, 0n);
-      assert.equal(stats.avgDonation, 0n);
+      assert.equal(stats[0], 0n); // totalAmount
+      assert.equal(stats[1], 0n); // totalCount
+      assert.equal(stats[2], 0n); // avgDonation
     });
   });
   
