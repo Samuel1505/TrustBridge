@@ -136,7 +136,7 @@ describe("NGORegistry", async function () {
       assert.equal(ngo.founderDID, founderDID);
       assert.equal(ngo.founderAge, founderAge);
       assert.equal(ngo.founderCountry, founderCountry);
-      assert.equal(ngo.ngoWallet, ngo1);
+      assert.equal(getAddress(ngo.ngoWallet), getAddress(ngo1));
       assert.equal(ngo.ipfsProfile, ipfsProfile);
       assert.equal(ngo.isActive, true);
       assert.equal(await registry.read.isVerified([ngo1]), true);
@@ -751,6 +751,9 @@ describe("NGORegistry", async function () {
       const vcSignature = await createVCSignature(vcProofHash);
       const accounts = await viem.getWalletClients();
       const expiredNGO = accounts[9].account.address;
+      
+      // Mint cUSD to the account first
+      await cUSD.write.mint([expiredNGO, parseEther("10000")]);
       
       await cUSD.write.approve([registry.address, registrationFee], {
         account: expiredNGO,
