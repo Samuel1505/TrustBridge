@@ -2,8 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import VerificationModal from './VerificationModal';
 
 export default function Hero() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   return (
     <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-emerald-50/50 to-white">
       <div className="max-w-7xl mx-auto">
@@ -52,8 +55,11 @@ export default function Hero() {
               transition={{ delay: 0.5, duration: 0.6 }}
               className="flex flex-col sm:flex-row gap-4"
             >
-              <button className="group px-8 py-4 bg-emerald-600 text-white font-semibold rounded-full hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
-                Browse NGOs
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="group px-8 py-4 bg-emerald-600 text-white font-semibold rounded-full hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                Launch App
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <button className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-full border-2 border-gray-200 hover:border-emerald-600 hover:text-emerald-600 transition-all">
@@ -146,6 +152,8 @@ export default function Hero() {
           </motion.div>
         </div>
       </div>
+
+      <VerificationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </section>
   );
 }
