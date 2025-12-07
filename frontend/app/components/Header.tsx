@@ -30,9 +30,7 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="px-6 py-2.5 text-emerald-600 font-medium hover:bg-emerald-50 rounded-full transition-colors">
-            Register NGO
-          </button>
+          <appkit-button />
         </div>
       </nav>
     </motion.header>
