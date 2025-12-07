@@ -57,10 +57,12 @@ export default function CTA() {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <button className="group px-8 py-4 bg-white text-emerald-600 font-semibold rounded-full hover:bg-emerald-50 transition-all shadow-xl hover:shadow-2xl flex items-center justify-center gap-2">
-              Browse Verified NGOs
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            <a href="/dashboard">
+              <button className="group px-8 py-4 bg-white text-emerald-600 font-semibold rounded-full hover:bg-emerald-50 transition-all shadow-xl hover:shadow-2xl flex items-center justify-center gap-2">
+                Browse Verified NGOs
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </a>
             <button className="px-8 py-4 bg-transparent text-white font-semibold rounded-full border-2 border-white hover:bg-white/10 transition-all">
               Register Your NGO
             </button>

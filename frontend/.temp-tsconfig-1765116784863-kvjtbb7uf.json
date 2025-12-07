@@ -1,0 +1,56 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": false,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "include": [
+    "app/layout.tsx",
+    "app/components/Header.tsx",
+    "app/components/Hero.tsx",
+    "app/components/Features.tsx",
+    "app/components/HowItWorks.tsx",
+    "app/components/CTA.tsx",
+    "app/components/Footer.tsx",
+    "app/page.tsx",
+    "app/config/wagmi.ts",
+    "app/providers/Web3Provider.tsx",
+    "app/components/VerificationModal.tsx",
+    "app/data/mockNGOs.ts",
+    "app/components/NGOCard.tsx",
+    "app/components/FilterSidebar.tsx",
+    "app/dashboard/page.tsx",
+    "app/components/DonationModal.tsx",
+    "app/ngo/[id]/page.tsx",
+    "app/donation/success/page.tsx",
+    "app/profile/create/page.tsx",
+    "/home/admin/Desktop/dev/TrustBridge/frontend/**/*.d.ts"
+  ]
+}
