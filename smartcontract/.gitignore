@@ -18,3 +18,11 @@
 
 # Hardhat coverage reports
 /coverage
+
+# Environment variables
+.env
+.env.local
+
+# Deployment artifacts (keep structure, ignore contents)
+/deployments/*.json
+!/deployments/.gitkeep
