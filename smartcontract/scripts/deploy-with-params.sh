@@ -62,6 +62,7 @@ fi
 REGISTRATION_FEE_WEI=$(node -e "const {parseEther} = require('viem'); console.log(parseEther('${REGISTRATION_FEE:-10}').toString())")
 
 # Build parameters JSON
+# Note: registrationFee should be passed as a string (not a number) to preserve precision
 PARAMS=$(cat <<EOF
 {
   "TrustBridgeModule": {
