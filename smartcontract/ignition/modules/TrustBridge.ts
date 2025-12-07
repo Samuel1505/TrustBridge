@@ -26,20 +26,10 @@ export default buildModule("TrustBridgeModule", (m) => {
     parseEther("10").toString() // Default: 10 cUSD in wei
   );
   
-  // Ensure registrationFee is converted to BigInt properly
-  // m.getParameter returns the value, but we need to handle it as a string first
-  let registrationFee: bigint;
-  if (typeof registrationFeeParam === "string") {
-    registrationFee = BigInt(registrationFeeParam);
-  } else if (typeof registrationFeeParam === "bigint") {
-    registrationFee = registrationFeeParam;
-  } else if (typeof registrationFeeParam === "number") {
-    registrationFee = BigInt(registrationFeeParam);
-  } else {
-    // If it's an object, try to get the value property or convert to string
-    const value = (registrationFeeParam as any)?.value ?? registrationFeeParam;
-    registrationFee = BigInt(String(value));
-  }
+  // Convert registrationFee to BigInt
+  // Handle different parameter formats that might come from CLI
+  const registrationFeeStr = String(registrationFeeParam);
+  const registrationFee = BigInt(registrationFeeStr);
 
   // Deploy NGORegistry first
   const ngoRegistry = m.contract("NGORegistry", [
