@@ -15,7 +15,8 @@ import { NETWORK_CONFIG, type NetworkName } from "../config/networks.js";
 config();
 
 async function main() {
-  const networkName = hre.network.name;
+  // Get network name from environment or hardhat config
+  const networkName = process.env.HARDHAT_NETWORK || hre.network?.name || "hardhat";
   console.log(`\n🔧 Initializing addresses for network: ${networkName}\n`);
 
   // Get network-specific defaults

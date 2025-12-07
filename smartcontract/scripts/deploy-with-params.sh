@@ -15,7 +15,7 @@ get_network_default() {
         celoSepolia|celo-sepolia)
             case "$key" in
                 SELF_PROTOCOL_VERIFIER) echo "0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74" ;;
-                CUSD_ADDRESS) echo "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1" ;;
+                CUSD_ADDRESS) echo "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b" ;;
             esac
             ;;
         alfajores)

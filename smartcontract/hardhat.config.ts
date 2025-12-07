@@ -1,5 +1,9 @@
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import { configVariable, defineConfig } from "hardhat/config";
+import { config } from "dotenv";
+
+// Load environment variables
+config();
 
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin],
@@ -37,8 +41,10 @@ export default defineConfig({
     celoSepolia: {
       type: "http",
       chainType: "l1",
-      url: configVariable("CELO_SEPOLIA_RPC_URL"),
-      accounts: [configVariable("CELO_SEPOLIA_PRIVATE_KEY")],
+      url: process.env.CELO_SEPOLIA_RPC_URL || configVariable("CELO_SEPOLIA_RPC_URL"),
+      accounts: process.env.CELO_SEPOLIA_PRIVATE_KEY 
+        ? [process.env.CELO_SEPOLIA_PRIVATE_KEY]
+        : [configVariable("CELO_SEPOLIA_PRIVATE_KEY")],
     },
     alfajores: {
       type: "http",
