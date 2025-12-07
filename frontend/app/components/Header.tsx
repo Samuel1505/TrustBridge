@@ -28,7 +28,7 @@ export default function Header() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {isHomePage ? (
+            {isHomePage && (
               <>
                 <a href="#features" className="text-gray-600 hover:text-emerald-600 transition-colors font-medium">
                   Features
@@ -37,16 +37,13 @@ export default function Header() {
                   How It Works
                 </a>
               </>
-            ) : (
-              <>
-                <Link href="/dashboard" className={`transition-colors font-medium ${pathname === '/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}>
-                  Browse NGOs
-                </Link>
-                <Link href="/profile/create" className={`transition-colors font-medium ${pathname === '/profile/create' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}>
-                  Register NGO
-                </Link>
-              </>
             )}
+            <Link href="/dashboard" className={`transition-colors font-medium ${pathname === '/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}>
+              Browse NGOs
+            </Link>
+            <Link href="/profile/create" className={`transition-colors font-medium ${pathname === '/profile/create' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}>
+              Register NGO
+            </Link>
           </div>
 
           {/* Desktop Actions */}
@@ -72,7 +69,7 @@ export default function Header() {
             className="md:hidden pt-4 pb-6 border-t border-gray-100 mt-4"
           >
             <div className="flex flex-col gap-4">
-              {isHomePage ? (
+              {isHomePage && (
                 <>
                   <a
                     href="#features"
@@ -89,24 +86,21 @@ export default function Header() {
                     How It Works
                   </a>
                 </>
-              ) : (
-                <>
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`transition-colors font-medium py-2 ${pathname === '/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}
-                  >
-                    Browse NGOs
-                  </Link>
-                  <Link
-                    href="/profile/create"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`transition-colors font-medium py-2 ${pathname === '/profile/create' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}
-                  >
-                    Register NGO
-                  </Link>
-                </>
               )}
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`transition-colors font-medium py-2 ${pathname === '/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}
+              >
+                Browse NGOs
+              </Link>
+              <Link
+                href="/profile/create"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`transition-colors font-medium py-2 ${pathname === '/profile/create' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}
+              >
+                Register NGO
+              </Link>
               <div className="pt-4 border-t border-gray-100">
                 <appkit-button />
               </div>

@@ -37,3 +37,22 @@
   --color-accent: var(--accent);
   --font-inter: var(--font-inter);
 }
+
+/* AppKit/Reown Wallet Button Customization */
+appkit-button {
+  --w3m-accent: #10b981 !important;
+  --w3m-color-mix: #10b981 !important;
+  --w3m-color-mix-strength: 40 !important;
+}
+
+appkit-button::part(button) {
+  background-color: #10b981 !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+  padding: 0.625rem 1.5rem !important;
+  transition: all 0.2s !important;
+}
+
+appkit-button::part(button):hover {
+  background-color: #059669 !important;
+}
