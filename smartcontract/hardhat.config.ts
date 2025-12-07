@@ -7,6 +7,21 @@ config();
 
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin],
+  etherscan: {
+    apiKey: {
+      celoSepolia: process.env.CELOSCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "celoSepolia",
+        chainId: 11155712,
+        urls: {
+          apiURL: "https://api-sepolia.celoscan.io/api",
+          browserURL: "https://sepolia.celoscan.io",
+        },
+      },
+    ],
+  },
   solidity: {
     profiles: {
       default: {
