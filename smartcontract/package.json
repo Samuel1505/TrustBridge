@@ -7,10 +7,12 @@
     "test": "hardhat test",
     "test:nodejs": "hardhat test nodejs",
     "test:solidity": "hardhat test solidity",
+    "compile": "hardhat compile",
     "deploy:check": "hardhat run scripts/deploy.ts",
     "deploy:local": "hardhat ignition deploy ignition/modules/TrustBridge.ts",
     "deploy:sepolia": "hardhat ignition deploy ignition/modules/TrustBridge.ts --network sepolia",
-    "compile": "hardhat compile"
+    "deploy:local:params": "./scripts/deploy-with-params.sh",
+    "deploy:sepolia:params": "./scripts/deploy-with-params.sh sepolia"
   },
   "keywords": [],
   "author": "",
