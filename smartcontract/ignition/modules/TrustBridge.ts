@@ -4,9 +4,14 @@ import { parseEther } from "viem";
 /**
  * Main deployment module for TrustBridge
  * Deploys NGORegistry first, then DonationRouter
+ * 
+ * Parameters can be passed via CLI:
+ * npx hardhat ignition deploy ignition/modules/TrustBridge.ts \
+ *   --parameters '{"TrustBridgeModule":{"selfProtocolVerifier":"0x...","cUSD":"0x...","feeCollector":"0x...","registrationFee":"10000000000000000000"}}'
  */
 export default buildModule("TrustBridgeModule", (m) => {
-  // Get parameters from config or use defaults
+  // Get parameters from CLI or use defaults
+  // Note: registrationFee should be in wei (e.g., "10000000000000000000" for 10 cUSD)
   const selfProtocolVerifier = m.getParameter(
     "selfProtocolVerifier",
     "0x0000000000000000000000000000000000000000"
@@ -18,7 +23,7 @@ export default buildModule("TrustBridgeModule", (m) => {
   );
   const registrationFee = m.getParameter(
     "registrationFee",
-    parseEther("10").toString()
+    parseEther("10").toString() // Default: 10 cUSD in wei
   );
 
   // Deploy NGORegistry first
@@ -26,7 +31,7 @@ export default buildModule("TrustBridgeModule", (m) => {
     selfProtocolVerifier,
     cUSD,
     feeCollector,
-    registrationFee,
+    BigInt(registrationFee), // Convert string to BigInt
   ]);
 
   // Deploy DonationRouter with reference to NGORegistry
