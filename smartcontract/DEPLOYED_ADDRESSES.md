@@ -8,7 +8,12 @@
 ### Contracts
 
 - **NGORegistry:** `0xA49d0Fb2966B8D54Bd7Ec182dC93979763A58128`
+  - ✅ Verified on Sourcify: https://sourcify.dev/server/repo-ui/11142220/0xA49d0Fb2966B8D54Bd7Ec182dC93979763A58128
+  - 🔍 CeloScan: https://sepolia.celoscan.io/address/0xA49d0Fb2966B8D54Bd7Ec182dC93979763A58128
+
 - **DonationRouter:** `0x0a563f6Ca5fDa6410165E75f7b50b5b942573e87`
+  - ✅ Verified on Sourcify: https://sourcify.dev/server/repo-ui/11142220/0x0a563f6Ca5fDa6410165E75f7b50b5b942573e87
+  - 🔍 CeloScan: https://sepolia.celoscan.io/address/0x0a563f6Ca5fDa6410165E75f7b50b5b942573e87
 
 ### Deployment Parameters
 
@@ -21,9 +26,11 @@
 
 December 7, 2024
 
-### Verification
+### Verification Status
 
-To verify the contracts on CeloScan, use:
+✅ **Both contracts have been verified on Sourcify!**
+
+The contracts were verified using Hardhat's verification plugin. To verify on CeloScan (if you have an API key), add `CELOSCAN_API_KEY` to your `.env` file and run:
 
 ```bash
 # Verify NGORegistry
