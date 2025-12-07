@@ -9,6 +9,7 @@
     "test:solidity": "hardhat test solidity",
     "compile": "hardhat compile",
     "init:addresses": "hardhat run scripts/init-addresses.ts",
+    "reset:deployment": "hardhat run scripts/reset-deployment.ts",
     "deploy:check": "hardhat run scripts/deploy.ts",
     "deploy:local": "hardhat ignition deploy ignition/modules/TrustBridge.ts",
     "deploy:celo-sepolia": "hardhat ignition deploy ignition/modules/TrustBridge.ts --network celoSepolia",

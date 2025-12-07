@@ -1,25 +1,36 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { parseEther } from "viem";
+import { NETWORK_CONFIG } from "../../config/networks.js";
 
 /**
  * Main deployment module for TrustBridge
  * Deploys NGORegistry first, then DonationRouter
  * 
- * Parameters can be passed via CLI:
+ * Parameters should be passed via CLI using the deployment script:
+ * npm run deploy:celo-sepolia:params
+ * 
+ * Or manually:
  * npx hardhat ignition deploy ignition/modules/TrustBridge.ts \
  *   --parameters '{"TrustBridgeModule":{"selfProtocolVerifier":"0x...","cUSD":"0x...","feeCollector":"0x...","registrationFee":"10000000000000000000"}}'
  */
 export default buildModule("TrustBridgeModule", (m) => {
-  // Get parameters from CLI or use defaults
-  // Note: registrationFee should be in wei (e.g., "10000000000000000000" for 10 cUSD)
+  // Get network-specific defaults (for Celo Sepolia)
+  // These are used as fallbacks if parameters are not provided
+  const celoSepoliaDefaults = NETWORK_CONFIG.celoSepolia;
+  
+  // Get parameters from CLI or use network defaults
+  // Note: Parameters are typically provided via the deployment script
   const selfProtocolVerifier = m.getParameter(
     "selfProtocolVerifier",
-    "0x0000000000000000000000000000000000000000"
+    celoSepoliaDefaults.selfProtocolVerifier // Default: Self Protocol IVH on Celo Sepolia
   );
-  const cUSD = m.getParameter("cUSD", "0x0000000000000000000000000000000000000000");
+  const cUSD = m.getParameter(
+    "cUSD",
+    celoSepoliaDefaults.cUSD // Default: cUSD on Celo Sepolia
+  );
   const feeCollector = m.getParameter(
     "feeCollector",
-    "0x0000000000000000000000000000000000000000"
+    "0x0000000000000000000000000000000000000000" // Fee collector must be provided
   );
   // Get registrationFee parameter
   // When passed via CLI, Hardhat Ignition may wrap it in an object

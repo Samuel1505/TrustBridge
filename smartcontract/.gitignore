@@ -26,3 +26,6 @@
 # Deployment artifacts (keep structure, ignore contents)
 /deployments/*.json
 !/deployments/.gitkeep
+
+# Hardhat Ignition deployment state
+/ignition/deployments/
