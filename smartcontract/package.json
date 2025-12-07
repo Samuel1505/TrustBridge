@@ -6,7 +6,17 @@
   "scripts": {
     "test": "hardhat test",
     "test:nodejs": "hardhat test nodejs",
-    "test:solidity": "hardhat test solidity"
+    "test:solidity": "hardhat test solidity",
+    "compile": "hardhat compile",
+    "init:addresses": "hardhat run scripts/init-addresses.ts",
+    "reset:deployment": "hardhat run scripts/reset-deployment.ts",
+    "verify": "hardhat verify",
+    "deploy:check": "hardhat run scripts/deploy.ts",
+    "deploy:local": "hardhat ignition deploy ignition/modules/TrustBridge.ts",
+    "deploy:celo-sepolia": "hardhat ignition deploy ignition/modules/TrustBridge.ts --network celoSepolia",
+    "deploy:alfajores": "hardhat ignition deploy ignition/modules/TrustBridge.ts --network alfajores",
+    "deploy:local:params": "./scripts/deploy-with-params.sh",
+    "deploy:celo-sepolia:params": "./scripts/deploy-with-params.sh celoSepolia"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +32,7 @@
     "viem": "^2.41.2"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^17.2.3"
   }
 }
