@@ -34,5 +34,17 @@ export default defineConfig({
       url: configVariable("SEPOLIA_RPC_URL"),
       accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
     },
+    celoSepolia: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("CELO_SEPOLIA_RPC_URL", "https://celo-sepolia.infura.io/v3/YOUR_INFURA_KEY"),
+      accounts: [configVariable("CELO_SEPOLIA_PRIVATE_KEY")],
+    },
+    alfajores: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("ALFAJORES_RPC_URL", "https://alfajores-forno.celo-testnet.org"),
+      accounts: [configVariable("ALFAJORES_PRIVATE_KEY")],
+    },
   },
 });

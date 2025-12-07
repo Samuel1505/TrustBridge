@@ -2,22 +2,59 @@
 
 # Deployment script that reads from .env and passes parameters to Hardhat Ignition
 # Usage: ./scripts/deploy-with-params.sh [network]
+# Network defaults will be used if env vars are not set
 
 set -e
 
-# Load environment variables
-if [ ! -f .env ]; then
-    echo "Error: .env file not found"
-    echo "Please create a .env file with the required variables"
-    exit 1
+# Network-specific defaults
+get_network_default() {
+    local network=$1
+    local key=$2
+    
+    case "$network" in
+        celoSepolia|celo-sepolia)
+            case "$key" in
+                SELF_PROTOCOL_VERIFIER) echo "0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74" ;;
+                CUSD_ADDRESS) echo "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1" ;;
+            esac
+            ;;
+        alfajores)
+            case "$key" in
+                SELF_PROTOCOL_VERIFIER) echo "0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74" ;;
+                CUSD_ADDRESS) echo "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1" ;;
+            esac
+            ;;
+    esac
+}
+
+# Load environment variables if .env exists
+if [ -f .env ]; then
+    source .env
 fi
 
-source .env
+# Determine network
+NETWORK=${1:-""}
+NETWORK_FLAG=""
+if [ -n "$NETWORK" ]; then
+    NETWORK_FLAG="--network $NETWORK"
+    # Use network defaults if env vars not set
+    if [ -z "$SELF_PROTOCOL_VERIFIER" ]; then
+        SELF_PROTOCOL_VERIFIER=$(get_network_default "$NETWORK" "SELF_PROTOCOL_VERIFIER")
+        echo "⚠️  Using network default for SELF_PROTOCOL_VERIFIER: $SELF_PROTOCOL_VERIFIER"
+    fi
+    if [ -z "$CUSD_ADDRESS" ]; then
+        CUSD_ADDRESS=$(get_network_default "$NETWORK" "CUSD_ADDRESS")
+        echo "⚠️  Using network default for CUSD_ADDRESS: $CUSD_ADDRESS"
+    fi
+fi
 
 # Validate required variables
 if [ -z "$SELF_PROTOCOL_VERIFIER" ] || [ -z "$CUSD_ADDRESS" ] || [ -z "$FEE_COLLECTOR" ]; then
     echo "Error: Missing required environment variables"
-    echo "Required: SELF_PROTOCOL_VERIFIER, CUSD_ADDRESS, FEE_COLLECTOR"
+    echo "Required: FEE_COLLECTOR (and optionally SELF_PROTOCOL_VERIFIER, CUSD_ADDRESS)"
+    if [ -n "$NETWORK" ]; then
+        echo "Network defaults available for: celoSepolia, alfajores"
+    fi
     exit 1
 fi
 
