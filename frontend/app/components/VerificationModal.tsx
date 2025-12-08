@@ -497,8 +497,17 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                             <div className="flex items-start gap-3">
                               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                               <div className="flex-1">
-                                <h5 className="font-semibold text-red-900 mb-1">Error</h5>
-                                <p className="text-sm text-red-700">{errorMessage}</p>
+                                <h5 className="font-semibold text-red-900 mb-1">Verification Error</h5>
+                                <p className="text-sm text-red-700 mb-3">{errorMessage}</p>
+                                <button
+                                  onClick={() => {
+                                    setErrorMessage('');
+                                    setVerificationStep('intro');
+                                  }}
+                                  className="text-sm text-red-600 hover:text-red-800 underline font-medium"
+                                >
+                                  Try Again
+                                </button>
                               </div>
                             </div>
                           </div>
