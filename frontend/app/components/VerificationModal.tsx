@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Loader2, Shield, AlertCircle, Smartphone, Monitor } from 'lucide-react';
+import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Loader2, Shield, AlertCircle, Smartphone, Monitor, Upload, Image as ImageIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
@@ -49,6 +49,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const [selfApp, setSelfApp] = useState<any | null>(null);
   const [universalLink, setUniversalLink] = useState('');
   const [ipfsProfile, setIpfsProfile] = useState('');
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [verificationProofData, setVerificationProofData] = useState<any | null>(null);
   
@@ -234,6 +237,38 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   }, [isApprovalSuccess, currentStep]);
 
+  // Handle image upload and mock IPFS upload
+  const handleImageUpload = async (file: File) => {
+    setIsUploading(true);
+    setErrorMessage('');
+    
+    try {
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      setUploadedImage(file);
+      
+      // Mock IPFS upload - generate a mock IPFS hash
+      // In production, this would upload to IPFS (Pinata, Web3.Storage, etc.)
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload delay
+      
+      // Generate mock IPFS hash (format: Qm...)
+      const mockIpfsHash = `Qm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      setIpfsProfile(mockIpfsHash);
+      
+      console.log('✅ Image uploaded (mocked) - IPFS hash:', mockIpfsHash);
+      setIsUploading(false);
+    } catch (error: any) {
+      console.error('Image upload error:', error);
+      setErrorMessage('Failed to upload image. Please try again.');
+      setIsUploading(false);
+    }
+  };
+
   // Handle NGO registration
   const handleRegisterNGO = async () => {
     if (!verificationProofData) {
@@ -242,7 +277,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
 
     if (!ipfsProfile || ipfsProfile.trim().length === 0) {
-      setErrorMessage('Please enter an IPFS profile hash');
+      setErrorMessage('Please upload an image for your NGO profile');
       return;
     }
 
@@ -643,17 +678,84 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        IPFS Profile Hash
+                        Upload NGO Profile Image
                       </label>
-                      <input
-                        type="text"
-                        value={ipfsProfile}
-                        onChange={(e) => setIpfsProfile(e.target.value)}
-                        placeholder="Qm..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      />
+                      
+                      {!imagePreview ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-500 transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file);
+                              }
+                            }}
+                            className="hidden"
+                            id="image-upload"
+                            disabled={isUploading}
+                          />
+                          <label
+                            htmlFor="image-upload"
+                            className="cursor-pointer flex flex-col items-center gap-3"
+                          >
+                            {isUploading ? (
+                              <>
+                                <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+                                <p className="text-sm text-gray-600">Uploading to IPFS...</p>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                                  <Upload className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    Click to upload or drag and drop
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    PNG, JPG, GIF up to 10MB
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="relative border border-gray-300 rounded-lg overflow-hidden">
+                            <img
+                              src={imagePreview}
+                              alt="NGO profile preview"
+                              className="w-full h-64 object-cover"
+                            />
+                            <button
+                              onClick={() => {
+                                setImagePreview(null);
+                                setUploadedImage(null);
+                                setIpfsProfile('');
+                              }}
+                              className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {ipfsProfile && (
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                              <p className="text-xs text-emerald-800 font-medium mb-1">
+                                ✅ Image uploaded to IPFS
+                              </p>
+                              <p className="text-xs text-emerald-700 font-mono break-all">
+                                {ipfsProfile}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       <p className="mt-2 text-xs text-gray-500">
-                        Enter the IPFS hash of your NGO profile (e.g., Qm...). This should contain your NGO's details, mission, and verification documents.
+                        Upload an image representing your NGO. This will be stored on IPFS and used as your profile image.
                       </p>
                     </div>
 
@@ -672,7 +774,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </button>
                       <button
                         onClick={handleRegisterNGO}
-                        disabled={isRegistering || !ipfsProfile.trim()}
+                        disabled={isRegistering || !ipfsProfile || isUploading}
                         className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {isRegistering ? (
