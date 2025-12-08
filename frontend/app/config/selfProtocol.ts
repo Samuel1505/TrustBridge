@@ -27,7 +27,18 @@ export function createSelfAppConfig(userId: string) {
   // Contract address MUST be lowercase according to docs
   const contractAddress = NGORegistryContract.address.toLowerCase();
   
-  return {
+  // Self Protocol backend endpoint (required for proof generation)
+  // For staging_celo, Self Protocol uses this to generate proofs
+  // If not set, Self Protocol may use default staging endpoint
+  const backendEndpoint = process.env.NEXT_PUBLIC_SELF_ENDPOINT;
+  
+  console.log('🔍 Self Protocol Config:', {
+    contractAddress,
+    backendEndpoint: backendEndpoint || 'Using default staging endpoint',
+    endpointType: 'staging_celo',
+  });
+  
+  const config: any = {
     version: 2,
     appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'TrustBridge',
     scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'trustbridge',
@@ -52,6 +63,13 @@ export function createSelfAppConfig(userId: string) {
       nationality: true,
     },
   };
+  
+  // Add backend endpoint if provided (some Self Protocol setups require this)
+  if (backendEndpoint) {
+    config.backendEndpoint = backendEndpoint;
+  }
+  
+  return config;
 }
 
 /**
