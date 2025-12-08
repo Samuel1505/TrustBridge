@@ -19,11 +19,31 @@ Self Protocol is used to verify NGO founders' identities using biometric passpor
 - For staging/testing: `https://staging-api.self.xyz/api/verify`
 - For production: `https://api.self.xyz/api/verify`
 - Note: These endpoints may have rate limits or restrictions
+- **IMPORTANT**: The scope (`trustbridge`) must be registered with Self Protocol's backend
+- Contact Self Protocol support to register your scope with the public endpoint
 
-**Option B: Set Up Your Own Backend Endpoint**
-- Create a simple backend endpoint that uses Self Protocol's backend SDK
+**Option B: Set Up Your Own Backend Endpoint (Recommended for Production)**
+- Create a backend API endpoint using `SelfBackendVerifier` from `@selfxyz/core`
+- Your backend must expose a `POST /api/verify` endpoint that Self Protocol's relayers can call
+- The endpoint should verify proofs using `SelfBackendVerifier.verify()`
 - See [Self Protocol Backend Integration](https://docs.self.xyz/backend-integration/basic-integration) for details
-- Your endpoint should verify the proof and return the attestation
+- Example backend setup:
+  ```typescript
+  import { SelfBackendVerifier, DefaultConfigStore, AllIds } from '@selfxyz/core'
+  
+  const verifier = new SelfBackendVerifier(
+    'trustbridge', // scope - must match frontend
+    'https://your-api.com/api/verify', // endpoint URL
+    true, // mockPassport (true = staging, false = mainnet)
+    AllIds, // allowed attestation IDs
+    new DefaultConfigStore({
+      minimumAge: 18,
+      excludedCountries: ['CUBA', 'IRAN', 'NORTH_KOREA', 'RUSSIA', 'SYRIA'],
+      ofac: false,
+    }),
+    'hex' // userIdentifierType
+  )
+  ```
 
 **To get started:**
 1. Visit [Self Protocol Dashboard](https://cloud.self.xyz) or contact Self Protocol team
