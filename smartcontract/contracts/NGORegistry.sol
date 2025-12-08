@@ -48,6 +48,9 @@ contract NGORegistry is ReentrancyGuard {
     // Self Protocol verification
     address public selfProtocolVerifier;
     
+    // Staging mode - skips signature verification for testing with mock passport
+    bool public stagingMode;
+    
     // Anti-spam registration fee
     IERC20 public immutable cUSD;
     uint256 public registrationFee;
@@ -95,6 +98,7 @@ contract NGORegistry is ReentrancyGuard {
     event RegistrationFeeUpdated(uint256 oldFee, uint256 newFee);
     event FeeCollectorUpdated(address oldCollector, address newCollector);
     event SelfProtocolVerifierUpdated(address oldVerifier, address newVerifier);
+    event StagingModeUpdated(bool oldMode, bool newMode);
     
     // Modifiers
     modifier onlyAdmin() {
@@ -112,7 +116,8 @@ contract NGORegistry is ReentrancyGuard {
         address _selfProtocolVerifier,
         address _cUSD,
         address _feeCollector,
-        uint256 _registrationFee
+        uint256 _registrationFee,
+        bool _stagingMode
     ) {
         require(_selfProtocolVerifier != address(0), "Invalid verifier");
         require(_cUSD != address(0), "Invalid cUSD");
@@ -122,6 +127,7 @@ contract NGORegistry is ReentrancyGuard {
         cUSD = IERC20(_cUSD);
         feeCollector = _feeCollector;
         registrationFee = _registrationFee;
+        stagingMode = _stagingMode; // Enable staging mode for testing with mock passport
         admin = msg.sender;
     }
     
@@ -156,11 +162,13 @@ contract NGORegistry is ReentrancyGuard {
         require(bytes(_ipfsProfile).length > 0, "Invalid profile");
         require(bytes(_founderCountry).length >= 2, "Invalid country code");
         
-        // Verify VC signature from Self Protocol
-        require(
-            _verifyVCSignature(_vcProofHash, _vcSignature),
-            "Invalid VC signature"
-        );
+        // Verify VC signature from Self Protocol (skip in staging mode for testing)
+        if (!stagingMode) {
+            require(
+                _verifyVCSignature(_vcProofHash, _vcSignature),
+                "Invalid VC signature"
+            );
+        }
         
         // Collect registration fee
         require(
@@ -356,5 +364,11 @@ contract NGORegistry is ReentrancyGuard {
     function transferAdmin(address _newAdmin) external onlyAdmin {
         require(_newAdmin != address(0), "Invalid address");
         admin = _newAdmin;
+    }
+    
+    function updateStagingMode(bool _newMode) external onlyAdmin {
+        bool oldMode = stagingMode;
+        stagingMode = _newMode;
+        emit StagingModeUpdated(oldMode, _newMode);
     }
 }

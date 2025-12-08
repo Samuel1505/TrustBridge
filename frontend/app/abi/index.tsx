@@ -3,10 +3,10 @@ import DonationRouter from "./DonationRouter.json";
 
 export const NGORegistryContract = {
     abi: NGORegistry,
-    address: "0xdBb6Bcea1e9a701aC2692550A0ae0d18BB48E899"
+    address: "0x8AE49C5d7c0718467Eae6492BE15222EA67a589A"
 }
 
 export const DonationRouterContract = {
     abi: DonationRouter,
-    address: "0xbb861FEd3A798b6c04A9fE49cbF56159E3921295"
+    address: "0x991F9bd25201504c3988454B32fA9Fa1a8535fBC"
 }

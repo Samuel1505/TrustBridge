@@ -7,14 +7,14 @@
 
 ### Contracts
 
-- **NGORegistry:** `0xdBb6Bcea1e9a701aC2692550A0ae0d18BB48E899`
-  - ✅ Verified on Sourcify: https://sourcify.dev/server/repo-ui/11142220/0xdBb6Bcea1e9a701aC2692550A0ae0d18BB48E899
-  - 🔍 CeloScan: https://sepolia.celoscan.io/address/0xdBb6Bcea1e9a701aC2692550A0ae0d18BB48E899
-  - ✨ **New deployment** with `verifySelfProof` function for Self Protocol SDK compatibility
+- **NGORegistry:** `0x8AE49C5d7c0718467Eae6492BE15222EA67a589A`
+  - ✅ Verified on Sourcify: https://sourcify.dev/server/repo-ui/11142220/0x8AE49C5d7c0718467Eae6492BE15222EA67a589A
+  - 🔍 CeloScan: https://sepolia.celoscan.io/address/0x8AE49C5d7c0718467Eae6492BE15222EA67a589A
+  - ✨ **Latest deployment** with `verifySelfProof` function and `stagingMode` for testing
 
-- **DonationRouter:** `0xbb861FEd3A798b6c04A9fE49cbF56159E3921295`
-  - ✅ Verified on Sourcify: https://sourcify.dev/server/repo-ui/11142220/0xbb861FEd3A798b6c04A9fE49cbF56159E3921295
-  - 🔍 CeloScan: https://sepolia.celoscan.io/address/0xbb861FEd3A798b6c04A9fE49cbF56159E3921295
+- **DonationRouter:** `0x991F9bd25201504c3988454B32fA9Fa1a8535fBC`
+  - ✅ Verified on Sourcify: https://sourcify.dev/server/repo-ui/11142220/0x991F9bd25201504c3988454B32fA9Fa1a8535fBC
+  - 🔍 CeloScan: https://sepolia.celoscan.io/address/0x991F9bd25201504c3988454B32fA9Fa1a8535fBC
 
 ### Deployment Parameters
 
@@ -22,11 +22,13 @@
 - **cUSD Token:** `0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b`
 - **Fee Collector:** `0x34C775FB2fe2b8383B5659B3f7Fc1E721Ca04A3a`
 - **Registration Fee:** 1 cUSD (reduced from 10 cUSD for testnet)
+- **Staging Mode:** `true` (signature verification disabled for testing with mock passport)
 
 ### Deployment Date
 
-**Latest Deployment:** December 2024 (with `verifySelfProof` function)  
-**Previous Deployment:** December 7, 2024
+**Latest Deployment:** December 2024 (with `verifySelfProof` function and `stagingMode` enabled)  
+**Previous Deployment:** December 2024 (with `verifySelfProof` function)  
+**Initial Deployment:** December 7, 2024
 
 ### Verification Status
 

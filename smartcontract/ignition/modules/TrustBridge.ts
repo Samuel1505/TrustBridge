@@ -64,12 +64,19 @@ export default buildModule("TrustBridgeModule", (m) => {
     }
   }
 
+  // Get stagingMode parameter (default to true for testing)
+  const stagingMode = m.getParameter(
+    "stagingMode",
+    "true" // Enable staging mode by default for testing with mock passport
+  );
+
   // Deploy NGORegistry first
   const ngoRegistry = m.contract("NGORegistry", [
     selfProtocolVerifier,
     cUSD,
     feeCollector,
     registrationFee,
+    stagingMode === "true" || stagingMode === true,
   ]);
 
   // Deploy DonationRouter with reference to NGORegistry

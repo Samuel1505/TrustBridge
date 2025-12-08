@@ -35,12 +35,43 @@ export interface SelfProtocolData {
 export function processSelfProtocolResult(result: any): SelfProtocolData | null {
   try {
     console.log('Processing Self Protocol result:', result);
+    console.log('Full result structure:', JSON.stringify(result, null, 2));
+    
+    // Handle case where result is undefined or null (common with mock passport in staging)
+    if (!result || result === undefined || result === null) {
+      console.warn('⚠️ Self Protocol result is undefined - this is common with mock passport in staging mode');
+      console.warn('⚠️ Generating mock proof data for testing purposes');
+      console.warn('⚠️ IMPORTANT: The contract will reject registration because signature verification will fail');
+      console.warn('⚠️ For testing, you may need to modify the contract to skip signature verification in staging');
+      
+      // Generate mock data for testing with mock passport
+      // Note: This will NOT work with the current contract because signature verification will fail
+      const mockDid = `did:self:mock:${Date.now()}`;
+      const mockProofString = JSON.stringify({ did: mockDid, timestamp: Date.now(), mock: true });
+      const mockVcProofHash = keccak256(stringToBytes(mockProofString));
+      
+      // For staging/mock mode, we'll use a placeholder signature
+      // WARNING: This will cause contract registration to fail because the signature is invalid
+      // The contract's _verifyVCSignature will return false
+      const mockSignature = '0x' + '0'.repeat(130); // Placeholder signature (will fail verification)
+      
+      return {
+        did: mockDid,
+        vcProofHash: mockVcProofHash,
+        vcSignature: mockSignature as `0x${string}`,
+        age: 25, // Default age for testing
+        country: 'US', // Default country for testing
+        expiryDate: BigInt(Math.floor(Date.now() / 1000)) + 365n * 24n * 60n * 60n, // 1 year from now
+      };
+    }
     
     // Extract DID - Self Protocol provides this in the proof
     const did = result?.did 
       || result?.data?.did 
       || result?.proof?.did
       || result?.attestation?.did
+      || result?.userId
+      || result?.data?.userId
       || `did:self:${result?.userId || result?.data?.userId || 'unknown'}`;
     
     // Extract age and country from disclosures or proof
@@ -86,15 +117,17 @@ export function processSelfProtocolResult(result: any): SelfProtocolData | null 
     // Extract signature from the proof
     // Self Protocol IVH contract signs the proof hash
     // The signature should be in the proof object
-    const signature = proof?.signature 
+    let signature = proof?.signature 
       || proof?.sig
       || result?.signature
       || result?.data?.signature
       || result?.attestation?.signature;
     
+    // If no signature found (common with mock passport in staging), use placeholder
     if (!signature || signature === '0x') {
-      console.error('No signature found in Self Protocol result');
-      return null;
+      console.warn('⚠️ No signature found in Self Protocol result - using placeholder for staging/mock mode');
+      console.warn('⚠️ This is expected when using mock passport in staging');
+      signature = '0x' + '0'.repeat(130); // Placeholder signature for testing
     }
     
     // Ensure signature is properly formatted

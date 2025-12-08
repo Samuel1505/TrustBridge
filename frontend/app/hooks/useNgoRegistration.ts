@@ -20,11 +20,38 @@ const REGISTRATION_FEE = parseEther('1');
 export function useNgoRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [approvalHash, setApprovalHash] = useState<`0x${string}` | undefined>();
+  const [registrationHash, setRegistrationHash] = useState<`0x${string}` | undefined>();
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  
   const { address, isConnected } = useAccount();
   const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
+  
+  // Wait for approval transaction
+  const { 
+    isLoading: isApprovalConfirming, 
+    isSuccess: isApprovalSuccess 
+  } = useWaitForTransactionReceipt({
+    hash: approvalHash,
   });
+  
+  // Wait for registration transaction
+  const { 
+    isLoading: isRegistrationConfirming, 
+    isSuccess: isRegistrationSuccess 
+  } = useWaitForTransactionReceipt({
+    hash: registrationHash,
+  });
+  
+  // Track approval hash from writeContract
+  useEffect(() => {
+    if (hash && isApproving) {
+      setApprovalHash(hash);
+    } else if (hash && isRegistering) {
+      setRegistrationHash(hash);
+    }
+  }, [hash, isApproving, isRegistering]);
 
   // Check if user is already registered
   const { data: ngoData, refetch: refetchNgo } = useReadContract({
@@ -40,7 +67,7 @@ export function useNgoRegistration() {
   const isRegistered = ngoData ? (ngoData as any).isActive === true : false;
 
   // Check cUSD allowance
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: CUSD_ADDRESS,
     abi: erc20Abi,
     functionName: 'allowance',
@@ -61,7 +88,9 @@ export function useNgoRegistration() {
     }
 
     setIsLoading(true);
+    setIsApproving(true);
     setError(null);
+    setApprovalHash(undefined);
 
     try {
       writeContract({
@@ -70,12 +99,25 @@ export function useNgoRegistration() {
         functionName: 'approve',
         args: [NGORegistryContract.address as `0x${string}`, REGISTRATION_FEE],
       });
+      // Hash will be set via useEffect when writeContract returns it
     } catch (err: any) {
       console.error('Approval error:', err);
       setError(err.message || 'Failed to approve cUSD');
       setIsLoading(false);
+      setIsApproving(false);
     }
   };
+  
+  // Reset loading state when approval is successful
+  useEffect(() => {
+    if (isApprovalSuccess) {
+      console.log('✅ cUSD approval confirmed!');
+      setIsLoading(false);
+      setIsApproving(false);
+      // Refetch allowance to update needsApproval
+      refetchAllowance();
+    }
+  }, [isApprovalSuccess, refetchAllowance]);
 
   /**
    * Register NGO with Self Protocol verification data
@@ -93,7 +135,9 @@ export function useNgoRegistration() {
     }
 
     setIsLoading(true);
+    setIsRegistering(true);
     setError(null);
+    setRegistrationHash(undefined);
 
     try {
       // Process Self Protocol result
@@ -127,30 +171,35 @@ export function useNgoRegistration() {
           processedData.expiryDate,
         ],
       });
+      // Hash will be set via useEffect when writeContract returns it
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.message || 'Failed to register NGO');
       setIsLoading(false);
+      setIsRegistering(false);
     }
   };
 
   // Refetch NGO data after successful registration
   useEffect(() => {
-    if (isSuccess) {
+    if (isRegistrationSuccess) {
       refetchNgo();
       setIsLoading(false);
+      setIsRegistering(false);
     }
-  }, [isSuccess, refetchNgo]);
+  }, [isRegistrationSuccess, refetchNgo]);
 
   return {
     registerNGO,
     approveCUSD,
     isRegistered,
     needsApproval,
-    isLoading: isLoading || isPending || isConfirming,
-    isSuccess,
+    isLoading: isLoading || isPending || isApprovalConfirming || isRegistrationConfirming,
+    isApprovalSuccess,
+    isRegistrationSuccess,
     error,
-    hash,
+    approvalHash,
+    registrationHash,
   };
 }
 

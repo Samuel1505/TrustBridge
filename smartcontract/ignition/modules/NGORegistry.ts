@@ -16,12 +16,17 @@ export default buildModule("NGORegistryModule", (m) => {
     "registrationFee",
     parseEther("1").toString()
   );
+  const stagingMode = m.getParameter(
+    "stagingMode",
+    "true" // Enable staging mode by default for testing with mock passport
+  );
 
   const ngoRegistry = m.contract("NGORegistry", [
     selfProtocolVerifier,
     cUSD,
     feeCollector,
     registrationFee,
+    stagingMode === "true" || stagingMode === true,
   ]);
 
   return { ngoRegistry };

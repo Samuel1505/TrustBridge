@@ -2,14 +2,41 @@
 
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, Heart } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAccount, useReadContract } from 'wagmi';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import VerificationModal from './VerificationModal';
 import DonorVerificationModal from './DonorVerificationModal';
+import { NGORegistryContract } from '../abi';
 
 export default function Hero() {
   const [isNgoModalOpen, setIsNgoModalOpen] = useState(false);
   const [isDonorModalOpen, setIsDonorModalOpen] = useState(false);
+  const { address, isConnected } = useAccount();
+  const router = useRouter();
+  
+  // Check if user is already registered as NGO
+  const { data: ngoData } = useReadContract({
+    address: NGORegistryContract.address as `0x${string}`,
+    abi: NGORegistryContract.abi,
+    functionName: 'ngoByWallet',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && isConnected,
+    },
+  });
+  
+  const isRegistered = ngoData ? (ngoData as any).isActive === true : false;
+  
+  // Handle "Register as NGO" button - redirect if already registered
+  const handleRegisterNGO = () => {
+    if (isRegistered) {
+      router.push('/ngo/dashboard');
+    } else {
+      setIsNgoModalOpen(true);
+    }
+  };
   return (
     <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-emerald-50/50 to-white">
       <div className="max-w-7xl mx-auto">
@@ -67,10 +94,10 @@ export default function Hero() {
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <button 
-                onClick={() => setIsNgoModalOpen(true)}
+                onClick={handleRegisterNGO}
                 className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-full border-2 border-gray-200 hover:border-emerald-600 hover:text-emerald-600 transition-all"
               >
-                Register as NGO
+                {isRegistered ? 'NGO Dashboard' : 'Register as NGO'}
               </button>
             </motion.div>
 
