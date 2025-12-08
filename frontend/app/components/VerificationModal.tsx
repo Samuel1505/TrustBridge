@@ -168,7 +168,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+              className={`bg-white rounded-3xl shadow-2xl w-full max-h-[95vh] overflow-hidden flex flex-col ${
+                currentStep === 2 ? 'max-w-3xl' : 'max-w-2xl'
+              }`}
             >
               {/* Header */}
               <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-700 p-8 text-white">
@@ -212,7 +214,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
               </div>
 
               {/* Content */}
-              <div className="p-8">
+              <div className="p-8 overflow-y-auto flex-1">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentStep}
@@ -301,13 +303,15 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                         ) : (
                           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                             <div className="flex flex-col items-center text-center">
-                              <div className="w-full max-w-md mb-4 bg-white rounded-xl p-6 flex items-center justify-center min-h-[300px]">
-                                <div className="w-full max-w-xs">
-                                  <SelfQRcodeWrapper
-                                    selfApp={selfApp}
-                                    onSuccess={handleVerificationSuccess}
-                                    onError={handleVerificationError}
-                                  />
+                              <div className="w-full mb-4 bg-white rounded-xl p-8 flex items-center justify-center">
+                                <div className="w-full max-w-md overflow-auto">
+                                  <div className="flex justify-center">
+                                    <SelfQRcodeWrapper
+                                      selfApp={selfApp}
+                                      onSuccess={handleVerificationSuccess}
+                                      onError={handleVerificationError}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                               <h4 className="font-semibold text-gray-900 mb-2">
