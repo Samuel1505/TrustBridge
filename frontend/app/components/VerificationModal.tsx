@@ -9,6 +9,7 @@ import { SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qr
 import { createSelfAppConfig } from '../config/selfProtocol';
 import { processSelfProtocolResult } from '../utils/selfProtocol';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
+import { NGORegistryContract } from '../abi';
 
 interface VerificationModalProps {
   isOpen: boolean;
