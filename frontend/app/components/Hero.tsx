@@ -153,7 +153,15 @@ export default function Hero() {
         </div>
       </div>
 
-      <VerificationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <VerificationModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onVerified={() => {
+          // Handle successful verification
+          console.log('✅ Verification successful!');
+          // Modal will close automatically after verification
+        }}
+      />
     </section>
   );
 }
