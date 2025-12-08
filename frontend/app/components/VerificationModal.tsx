@@ -49,6 +49,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const [universalLink, setUniversalLink] = useState('');
   const [ipfsProfile, setIpfsProfile] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [verificationProofData, setVerificationProofData] = useState<any | null>(null);
   
   const { isConnected, address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -118,6 +119,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const handleSuccessfulVerification = async (proofData?: unknown) => {
     console.log('✅ Identity verified by Self Protocol!');
     console.log('Proof data received:', proofData);
+    
+    // Store the proof data for later use in registration
+    setVerificationProofData(proofData);
     
     // Process the verification result
     const processedData = processSelfProtocolResult(proofData);
@@ -581,11 +585,13 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                                   />
                                   <button
                                     onClick={() => {
-                                      // We need to get the verification result from Self Protocol
-                                      // For now, we'll need to store it when verification succeeds
-                                      registerNGO({}, ipfsProfile || 'QmPlaceholder');
+                                      if (verificationProofData) {
+                                        registerNGO(verificationProofData, ipfsProfile || 'QmPlaceholder');
+                                      } else {
+                                        setErrorMessage('Verification proof not found. Please verify your identity first.');
+                                      }
                                     }}
-                                    disabled={isRegistering || !ipfsProfile}
+                                    disabled={isRegistering || !ipfsProfile || !verificationProofData}
                                     className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                   >
                                     {isRegistering ? (
