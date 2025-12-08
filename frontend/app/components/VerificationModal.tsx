@@ -61,11 +61,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     isLoading: isRegistering, 
     isApprovalSuccess,
     isRegistrationSuccess,
+    approvalHash,
     error: registrationError 
   } = useNgoRegistration();
-  
-  // Track approval confirmation state
-  const isApprovalConfirming = isRegistering && currentStep === 3;
 
   // Check if user is already registered - skip to end if so
   useEffect(() => {
@@ -561,23 +559,42 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                   This fee helps prevent spam and ensures only serious NGOs register.
                 </p>
                 {needsApproval ? (
-                  <button
-                    onClick={handleApproveCUSD}
-                    disabled={isRegistering}
-                    className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center gap-2 mx-auto"
-                  >
-                    {isRegistering ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Approving...
-                      </>
+                  <div className="space-y-4">
+                    {isApprovalSuccess ? (
+                      <div className="space-y-4">
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                          <p className="text-sm text-emerald-800 font-medium">
+                            ✅ cUSD approval confirmed! You can now proceed to registration.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleNextStep}
+                          className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
+                        >
+                          Continue to Registration
+                          <ArrowRight className="w-5 h-5" />
+                        </button>
+                      </div>
                     ) : (
-                      <>
-                        Approve 1 cUSD
-                        <ArrowRight className="w-5 h-5" />
-                      </>
+                      <button
+                        onClick={handleApproveCUSD}
+                        disabled={isRegistering}
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center gap-2 mx-auto"
+                      >
+                        {isRegistering ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            {approvalHash ? 'Confirming...' : 'Approving...'}
+                          </>
+                        ) : (
+                          <>
+                            Approve 1 cUSD
+                            <ArrowRight className="w-5 h-5" />
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
