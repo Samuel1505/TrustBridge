@@ -32,7 +32,7 @@ const steps = [
   {
     id: 3,
     title: 'Approve Registration Fee',
-    description: 'Approve 10 cUSD registration fee to prevent spam',
+    description: 'Approve 1 cUSD registration fee to prevent spam',
     icon: DollarSign,
   },
   {
@@ -544,7 +544,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                               <DollarSign className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
                               <div className="flex-1">
                                 <h4 className="font-semibold text-gray-900 mb-2">
-                                  Registration Fee: 10 cUSD
+                                  Registration Fee: 1 cUSD
                                 </h4>
                                 <p className="text-sm text-gray-600 mb-4">
                                   This small fee helps prevent spam and fake registrations. It's a one-time payment.
@@ -552,7 +552,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                                 <div className="bg-white rounded-lg p-4 mb-4">
                                   <div className="flex justify-between items-center mb-2">
                                     <span className="text-sm text-gray-600">Amount</span>
-                                    <span className="font-semibold text-gray-900">10 cUSD</span>
+                                    <span className="font-semibold text-gray-900">1 cUSD</span>
                                   </div>
                                   <div className="flex justify-between items-center">
                                     <span className="text-sm text-gray-600">Network Fee</span>

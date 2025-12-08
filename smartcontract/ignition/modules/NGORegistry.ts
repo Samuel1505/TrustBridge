@@ -14,7 +14,7 @@ export default buildModule("NGORegistryModule", (m) => {
   );
   const registrationFee = m.getParameter(
     "registrationFee",
-    parseEther("10").toString()
+    parseEther("1").toString()
   );
 
   const ngoRegistry = m.contract("NGORegistry", [

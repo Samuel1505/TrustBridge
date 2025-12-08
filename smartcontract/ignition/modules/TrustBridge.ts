@@ -36,7 +36,7 @@ export default buildModule("TrustBridgeModule", (m) => {
   // When passed via CLI, Hardhat Ignition may wrap it in an object
   const registrationFeeParamRaw = m.getParameter(
     "registrationFee",
-    parseEther("10").toString() // Default: 10 cUSD in wei
+    parseEther("1").toString() // Default: 1 cUSD in wei
   );
   
   // Extract the actual value - handle Parameter objects from Hardhat Ignition
@@ -58,7 +58,7 @@ export default buildModule("TrustBridgeModule", (m) => {
     const str = String(registrationFeeParamRaw);
     if (str === "[object Object]") {
       // If it's an object we can't stringify, use default
-      registrationFee = parseEther("10");
+      registrationFee = parseEther("1");
     } else {
       registrationFee = BigInt(str);
     }

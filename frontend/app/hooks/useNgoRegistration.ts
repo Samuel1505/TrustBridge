@@ -6,7 +6,7 @@ import { processSelfProtocolResult } from '../utils/selfProtocol';
 
 // cUSD address on Celo Sepolia
 const CUSD_ADDRESS = '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b' as `0x${string}`;
-const REGISTRATION_FEE = parseEther('10');
+const REGISTRATION_FEE = parseEther('1');
 
 /**
  * Hook for NGO registration with Self Protocol verification
