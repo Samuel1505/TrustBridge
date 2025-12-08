@@ -41,15 +41,19 @@ export function processSelfProtocolResult(result: any): SelfProtocolData | null 
     if (!result || result === undefined || result === null) {
       console.warn('⚠️ Self Protocol result is undefined - this is common with mock passport in staging mode');
       console.warn('⚠️ Generating mock proof data for testing purposes');
+      console.warn('⚠️ IMPORTANT: The contract will reject registration because signature verification will fail');
+      console.warn('⚠️ For testing, you may need to modify the contract to skip signature verification in staging');
       
       // Generate mock data for testing with mock passport
+      // Note: This will NOT work with the current contract because signature verification will fail
       const mockDid = `did:self:mock:${Date.now()}`;
-      const mockProofString = JSON.stringify({ did: mockDid, timestamp: Date.now() });
+      const mockProofString = JSON.stringify({ did: mockDid, timestamp: Date.now(), mock: true });
       const mockVcProofHash = keccak256(stringToBytes(mockProofString));
       
       // For staging/mock mode, we'll use a placeholder signature
-      // In production, this should come from Self Protocol
-      const mockSignature = '0x' + '0'.repeat(130); // Placeholder signature
+      // WARNING: This will cause contract registration to fail because the signature is invalid
+      // The contract's _verifyVCSignature will return false
+      const mockSignature = '0x' + '0'.repeat(130); // Placeholder signature (will fail verification)
       
       return {
         did: mockDid,

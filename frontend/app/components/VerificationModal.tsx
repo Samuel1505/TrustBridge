@@ -145,15 +145,22 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const handleSuccessfulVerification = async (proofData?: unknown) => {
     console.log('✅ Identity verified by Self Protocol!');
     console.log('Proof data received:', proofData);
+    console.log('Proof data type:', typeof proofData);
+    console.log('Proof data keys:', proofData ? Object.keys(proofData as any) : 'N/A');
     
-    // Store the proof data for registration
+    // Store the proof data for registration (even if undefined/null for mock passport)
     setVerificationProofData(proofData);
     
     // Process the verification result
+    // Note: With mock passport in staging, proofData may be undefined/null
+    // The processSelfProtocolResult function will handle this and generate mock data
     const processedData = processSelfProtocolResult(proofData);
     
     if (processedData) {
       console.log('✅ Processed Self Protocol data:', processedData);
+      console.log('⚠️ Note: If using mock passport, signature verification may fail on-chain');
+      console.log('⚠️ This is expected in staging mode - contract will reject invalid signatures');
+      
       // Auto-advance to next step after successful verification
       setTimeout(() => {
         handleNextStep();
