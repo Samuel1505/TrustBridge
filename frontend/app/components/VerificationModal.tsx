@@ -65,12 +65,16 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     error: registrationError 
   } = useNgoRegistration();
 
-  // Check if user is already registered - skip to end if so
+  const router = useRouter();
+  
+  // If user is already registered, redirect to dashboard instead of showing modal
   useEffect(() => {
     if (isConnected && isRegistered && isOpen) {
-      setCurrentStep(steps.length);
+      console.log('✅ User is already registered, redirecting to NGO dashboard');
+      onClose();
+      router.push('/ngo/dashboard');
     }
-  }, [isConnected, isRegistered, isOpen]);
+  }, [isConnected, isRegistered, isOpen, onClose, router]);
 
   // Initialize Self Protocol app when wallet is connected and on step 2
   useEffect(() => {
@@ -248,16 +252,18 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
 
-  // Handle registration success
+  // Handle registration success - redirect to NGO dashboard
+  const router = useRouter();
   useEffect(() => {
     if (isRegistrationSuccess) {
       console.log('✅ NGO registration successful!');
-      // Modal will close after a delay
+      // Redirect to NGO dashboard after a short delay
       setTimeout(() => {
         onClose();
-      }, 3000);
+        router.push('/ngo/dashboard');
+      }, 2000);
     }
-  }, [isRegistrationSuccess, onClose]);
+  }, [isRegistrationSuccess, onClose, router]);
 
   if (!isOpen) return null;
 
