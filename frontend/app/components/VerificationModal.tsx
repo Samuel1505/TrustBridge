@@ -301,12 +301,14 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                         ) : (
                           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                             <div className="flex flex-col items-center text-center">
-                              <div className="w-full max-w-sm mb-4 bg-white rounded-xl p-4">
-                                <SelfQRcodeWrapper
-                                  selfApp={selfApp}
-                                  onSuccess={handleVerificationSuccess}
-                                  onError={handleVerificationError}
-                                />
+                              <div className="w-full max-w-md mb-4 bg-white rounded-xl p-6 flex items-center justify-center min-h-[300px]">
+                                <div className="w-full max-w-xs">
+                                  <SelfQRcodeWrapper
+                                    selfApp={selfApp}
+                                    onSuccess={handleVerificationSuccess}
+                                    onError={handleVerificationError}
+                                  />
+                                </div>
                               </div>
                               <h4 className="font-semibold text-gray-900 mb-2">
                                 Scan with Self Protocol App
