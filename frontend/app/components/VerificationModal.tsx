@@ -398,12 +398,6 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </ul>
                     </div>
 
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                      <p className="text-sm text-yellow-800 font-medium mb-1">🧪 Testing Mode</p>
-                      <p className="text-xs text-yellow-700">
-                        Using Self Protocol staging_celo endpoint for testing
-                      </p>
-                    </div>
 
                     <div className="flex gap-4">
                       <button
