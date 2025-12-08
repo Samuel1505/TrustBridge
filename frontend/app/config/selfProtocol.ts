@@ -24,10 +24,10 @@ export const SELF_PROTOCOL_VERIFIER = '0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed7
  * @see https://docs.self.xyz/frontend-integration/qrcode-sdk
  */
 export function createSelfAppConfig(userId: string) {
-  // Contract address MUST be lowercase for staging_celo endpoint type
   // For contract integration with endpointType: 'staging_celo', the endpoint should be the contract address
   // Self Protocol uses this to route to the correct backend verification config
-  const contractAddress = NGORegistryContract.address.toLowerCase();
+  // NOTE: Attestify uses contract address directly without toLowerCase() - matching that approach
+  const contractAddress = NGORegistryContract.address;
   
   // Scope must match what's configured in Self Protocol's backend
   // This scope is used by Self Protocol to identify which verification config to use
@@ -37,6 +37,7 @@ export function createSelfAppConfig(userId: string) {
   // For contract integration, endpoint is the contract address
   // Self Protocol's backend will use this contract address + scope to find the verification config
   // If you have a custom backend endpoint, you can override with NEXT_PUBLIC_SELF_ENDPOINT
+  // NOTE: Attestify uses contract address directly (not lowercase) - matching that approach
   const endpoint = process.env.NEXT_PUBLIC_SELF_ENDPOINT || contractAddress;
   
   console.log('🔍 Self Protocol Config:', {
@@ -52,7 +53,7 @@ export function createSelfAppConfig(userId: string) {
     version: 2,
     appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'TrustBridge',
     scope: scope, // Must match backend configuration
-    endpoint: endpoint, // Contract address (lowercase) for staging_celo contract integration
+        endpoint: endpoint, // Contract address for staging_celo contract integration (matches Attestify format)
     logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
     userId,
     endpointType: 'staging_celo' as const, // Correct type for Celo Sepolia
@@ -67,7 +68,7 @@ export function createSelfAppConfig(userId: string) {
         countries.IRAN,
         countries.NORTH_KOREA,
         countries.RUSSIA,
-        countries.SYRIA,
+        // NOTE: Removed SYRIA to match Attestify's working configuration
       ],
       // Request nationality for country verification
       nationality: true,
