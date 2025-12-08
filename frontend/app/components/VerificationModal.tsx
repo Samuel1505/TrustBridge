@@ -137,9 +137,40 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   };
 
   // Handle verification error
-  const handleVerificationError = (data?: { error_code?: string; reason?: string }) => {
+  const handleVerificationError = (data?: any) => {
     console.error('❌ Verification failed:', data);
-    setErrorMessage(data?.reason || 'Verification failed. Please try again.');
+    
+    // Extract error message from various possible formats
+    let errorMsg = 'Verification failed. Please try again.';
+    
+    if (data) {
+      if (typeof data === 'string') {
+        errorMsg = data;
+      } else if (data.reason) {
+        errorMsg = data.reason;
+      } else if (data.error_code) {
+        errorMsg = `Error: ${data.error_code}`;
+      } else if (data.message) {
+        errorMsg = data.message;
+      } else if (data.error) {
+        errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+      } else if (data.status) {
+        errorMsg = `Verification failed with status: ${data.status}`;
+      } else {
+        // Try to stringify the object for debugging
+        try {
+          const errorStr = JSON.stringify(data);
+          if (errorStr !== '{}') {
+            errorMsg = `Verification failed: ${errorStr.substring(0, 200)}`;
+          }
+        } catch {
+          errorMsg = 'Verification failed. Please try again.';
+        }
+      }
+    }
+    
+    setErrorMessage(errorMsg);
+    setVerificationStep('intro'); // Go back to intro to allow retry
   };
 
   // Start verification flow
