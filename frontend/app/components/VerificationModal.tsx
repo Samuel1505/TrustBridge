@@ -133,6 +133,10 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     const processedData = processSelfProtocolResult(proofData);
     
     if (processedData) {
+      // Note: Self Protocol SDK may call verifySelfProof on the contract automatically
+      // We don't need to call it manually - the contract's verifySelfProof is a no-op
+      // The actual verification happens in registerNGO() with signature verification
+      
       // Auto-advance to next step after successful verification
       setTimeout(() => {
         handleNextStep();
