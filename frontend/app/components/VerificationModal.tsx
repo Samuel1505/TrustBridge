@@ -8,6 +8,7 @@ import { useAppKit } from '@reown/appkit/react';
 import { SelfQRcodeWrapper } from '@selfxyz/qrcode';
 import { createSelfApp, type SelfVerificationResult } from '../config/selfProtocol';
 import { processSelfProtocolResult, validateSelfProtocolData } from '../utils/selfProtocol';
+import { useNgoRegistration } from '../hooks/useNgoRegistration';
 import type { SelfApp } from '@selfxyz/qrcode';
 
 interface VerificationModalProps {
@@ -30,20 +31,14 @@ const steps = [
   },
   {
     id: 3,
-    title: 'Submit Credential',
-    description: 'Upload your verification credential from Self Protocol',
-    icon: Upload,
-  },
-  {
-    id: 4,
-    title: 'Pay Registration Fee',
-    description: 'Pay 1 cUSD registration fee to prevent spam',
+    title: 'Approve Registration Fee',
+    description: 'Approve 10 cUSD registration fee to prevent spam',
     icon: DollarSign,
   },
   {
-    id: 5,
-    title: 'Create NGO Profile',
-    description: 'Complete your NGO profile with mission and details',
+    id: 4,
+    title: 'Register NGO',
+    description: 'Complete registration with your verified identity',
     icon: UserCircle,
   },
 ];
@@ -53,14 +48,32 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const [selfApp, setSelfApp] = useState<SelfApp | null>(null);
   const [verificationResult, setVerificationResult] = useState<SelfVerificationResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [ipfsProfile, setIpfsProfile] = useState('');
   
   const { isConnected, address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { open } = useAppKit();
+  const { 
+    registerNGO, 
+    approveCUSD, 
+    isRegistered, 
+    needsApproval, 
+    isLoading: isRegistering, 
+    isSuccess: registrationSuccess,
+    error: registrationError 
+  } = useNgoRegistration();
+
+  // Check if user is already registered - skip verification if so
+  useEffect(() => {
+    if (isConnected && isRegistered && isOpen) {
+      // User is already registered, show message and close
+      setCurrentStep(steps.length);
+    }
+  }, [isConnected, isRegistered, isOpen]);
 
   // Initialize Self Protocol app when wallet is connected
   useEffect(() => {
-    if (isConnected && address && currentStep === 2) {
+    if (isConnected && address && currentStep === 2 && !isRegistered) {
       try {
         const app = createSelfApp(address);
         setSelfApp(app);
@@ -68,7 +81,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
         console.error('Failed to initialize Self Protocol:', error);
       }
     }
-  }, [isConnected, address, currentStep]);
+  }, [isConnected, address, currentStep, isRegistered]);
 
   const handleConnectWallet = () => {
     open();
@@ -334,86 +347,138 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
 
                     {currentStep === 3 && (
                       <div className="space-y-4">
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-emerald-500 transition-colors cursor-pointer">
-                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                          <h4 className="font-semibold text-gray-900 mb-2">
-                            Upload Verification Credential
-                          </h4>
-                          <p className="text-sm text-gray-600 mb-4">
-                            After completing verification in the Self Protocol app, upload your credential file here.
-                          </p>
-                          <button className="px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors">
-                            Choose File
-                          </button>
-                        </div>
+                        {isRegistered ? (
+                          <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle2 className="w-6 h-6 text-green-600" />
+                              <div>
+                                <h4 className="font-semibold text-gray-900">Already Registered!</h4>
+                                <p className="text-sm text-gray-600">You are already registered as an NGO. No need to verify again.</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                            <div className="flex items-start gap-3">
+                              <DollarSign className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900 mb-2">
+                                  Registration Fee: 10 cUSD
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-4">
+                                  This small fee helps prevent spam and fake registrations. It's a one-time payment.
+                                </p>
+                                <div className="bg-white rounded-lg p-4 mb-4">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-gray-600">Amount</span>
+                                    <span className="font-semibold text-gray-900">10 cUSD</span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Network Fee</span>
+                                    <span className="font-semibold text-gray-900">~0.001 CELO</span>
+                                  </div>
+                                </div>
+                                {needsApproval ? (
+                                  <button
+                                    onClick={approveCUSD}
+                                    disabled={isRegistering}
+                                    className="w-full px-6 py-3 bg-amber-600 text-white font-semibold rounded-xl hover:bg-amber-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                  >
+                                    {isRegistering ? (
+                                      <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Approving...
+                                      </>
+                                    ) : (
+                                      'Approve cUSD'
+                                    )}
+                                  </button>
+                                ) : (
+                                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                                    <p className="text-sm text-green-700">✓ cUSD approved. You can proceed to registration.</p>
+                                  </div>
+                                )}
+                                {registrationError && (
+                                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-sm text-red-600">{registrationError}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {currentStep === 4 && (
                       <div className="space-y-4">
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-                          <div className="flex items-start gap-3">
-                            <DollarSign className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
-                            <div>
-                              <h4 className="font-semibold text-gray-900 mb-2">
-                                Registration Fee: 1 cUSD
-                              </h4>
-                              <p className="text-sm text-gray-600 mb-4">
-                                This small fee helps prevent spam and fake registrations. It's a one-time payment.
-                              </p>
-                              <div className="bg-white rounded-lg p-4 mb-4">
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm text-gray-600">Amount</span>
-                                  <span className="font-semibold text-gray-900">1 cUSD</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-600">Network Fee</span>
-                                  <span className="font-semibold text-gray-900">~0.001 CELO</span>
-                                </div>
-                              </div>
-                              <button className="w-full px-6 py-3 bg-amber-600 text-white font-semibold rounded-xl hover:bg-amber-700 transition-colors">
-                                Pay Registration Fee
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {currentStep === 5 && (
-                      <div className="space-y-4">
-                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-                          <div className="flex items-start gap-3">
-                            <UserCircle className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900 mb-4">
-                                Create Your NGO Profile
-                              </h4>
-                              <div className="space-y-3">
-                                <input
-                                  type="text"
-                                  placeholder="Organization Name"
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
-                                <textarea
-                                  placeholder="Mission Statement (300 characters max)"
-                                  rows={3}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
-                                <input
-                                  type="email"
-                                  placeholder="Contact Email"
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
-                                <input
-                                  type="url"
-                                  placeholder="Website (optional)"
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
+                        {isRegistered ? (
+                          <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle2 className="w-6 h-6 text-green-600" />
+                              <div>
+                                <h4 className="font-semibold text-gray-900">Registration Complete!</h4>
+                                <p className="text-sm text-gray-600">You are already registered as an NGO.</p>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        ) : registrationSuccess ? (
+                          <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle2 className="w-6 h-6 text-green-600" />
+                              <div>
+                                <h4 className="font-semibold text-gray-900">Registration Successful!</h4>
+                                <p className="text-sm text-gray-600">Your NGO has been registered on TrustBridge.</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+                            <div className="flex items-start gap-3">
+                              <UserCircle className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900 mb-4">
+                                  Register Your NGO
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-4">
+                                  Enter your IPFS profile hash (or use a placeholder for now)
+                                </p>
+                                <div className="space-y-3">
+                                  <input
+                                    type="text"
+                                    placeholder="IPFS Profile Hash (e.g., QmXxxx...)"
+                                    value={ipfsProfile}
+                                    onChange={(e) => setIpfsProfile(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      if (verificationResult?.success && verificationResult.data?.processed) {
+                                        registerNGO(verificationResult.data, ipfsProfile || 'QmPlaceholder');
+                                      }
+                                    }}
+                                    disabled={isRegistering || !verificationResult?.success || !ipfsProfile}
+                                    className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                  >
+                                    {isRegistering ? (
+                                      <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Registering...
+                                      </>
+                                    ) : (
+                                      'Register NGO'
+                                    )}
+                                  </button>
+                                </div>
+                                {registrationError && (
+                                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-sm text-red-600">{registrationError}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </motion.div>

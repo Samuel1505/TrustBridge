@@ -23,40 +23,102 @@ export interface SelfProtocolData {
 }
 
 /**
- * Extract data from Self Protocol verification result
+ * Extract data from Self Protocol verification result for direct contract integration
  * 
- * Note: The actual implementation depends on the Self Protocol API response structure.
- * This is a placeholder that needs to be adapted based on the actual response format.
+ * The Self Protocol SDK provides a proof/attestation that contains:
+ * - The proof data (used to create vcProofHash)
+ * - The signature from Self Protocol IVH contract (vcSignature)
+ * - User attributes (age, country, DID)
+ * 
+ * This function extracts all required data to call registerNGO() directly.
  */
 export function processSelfProtocolResult(result: any): SelfProtocolData | null {
   try {
-    // Extract DID from the result
-    // The actual structure may vary - adjust based on Self Protocol API response
-    const did = result?.did || result?.data?.did || `did:self:${result?.userId || 'unknown'}`;
+    console.log('Processing Self Protocol result:', result);
     
-    // Extract age and country from disclosures
-    const disclosures = result?.disclosures || result?.data?.disclosures || {};
-    const age = disclosures?.age || disclosures?.minimumAge || 18;
-    const country = disclosures?.nationality || disclosures?.country || 'US';
+    // Extract DID - Self Protocol provides this in the proof
+    const did = result?.did 
+      || result?.data?.did 
+      || result?.proof?.did
+      || result?.attestation?.did
+      || `did:self:${result?.userId || result?.data?.userId || 'unknown'}`;
     
-    // Create VC proof hash from the proof data
-    // The proof structure depends on Self Protocol's response format
-    const proofData = result?.proof || result?.data?.proof || result?.attestation || '';
-    const proofString = typeof proofData === 'string' ? proofData : JSON.stringify(proofData);
+    // Extract age and country from disclosures or proof
+    const disclosures = result?.disclosures 
+      || result?.data?.disclosures 
+      || result?.proof?.disclosures
+      || result?.attestation?.disclosures
+      || {};
+    
+    // Age can be in disclosures or calculated from birthDate
+    let age = disclosures?.age 
+      || disclosures?.calculatedAge
+      || 18; // Default fallback
+    
+    // If we have birthDate, calculate age
+    if (disclosures?.birthDate && !age) {
+      const birthYear = new Date(disclosures.birthDate).getFullYear();
+      const currentYear = new Date().getFullYear();
+      age = currentYear - birthYear;
+    }
+    
+    // Country from nationality or country field
+    const country = disclosures?.nationality 
+      || disclosures?.country
+      || disclosures?.countryCode
+      || 'US';
+    
+    // Get the proof/attestation data
+    const proof = result?.proof 
+      || result?.data?.proof 
+      || result?.attestation
+      || result?.data?.attestation
+      || result;
+    
+    // Create VC proof hash from the proof
+    // Hash the entire proof object (excluding signature)
+    const proofForHash = { ...proof };
+    delete proofForHash.signature;
+    delete proofForHash.sig;
+    const proofString = JSON.stringify(proofForHash);
     const vcProofHash = keccak256(stringToBytes(proofString));
     
     // Extract signature from the proof
-    // This needs to be obtained from Self Protocol's verification response
-    // The signature is typically in the proof or attestation object
-    const signature = result?.signature || result?.data?.signature || result?.proof?.signature || '0x';
+    // Self Protocol IVH contract signs the proof hash
+    // The signature should be in the proof object
+    const signature = proof?.signature 
+      || proof?.sig
+      || result?.signature
+      || result?.data?.signature
+      || result?.attestation?.signature;
     
-    // Calculate expiry date (typically 1 year from verification)
-    const expiryDate = BigInt(Math.floor(Date.now() / 1000)) + 365n * 24n * 60n * 60n;
+    if (!signature || signature === '0x') {
+      console.error('No signature found in Self Protocol result');
+      return null;
+    }
+    
+    // Ensure signature is properly formatted
+    let vcSignature = signature;
+    if (typeof vcSignature === 'string' && !vcSignature.startsWith('0x')) {
+      vcSignature = `0x${vcSignature}`;
+    }
+    
+    // Extract expiry date from proof or calculate (typically 1 year from verification)
+    let expiryDate: bigint;
+    if (proof?.expiryDate || proof?.expiresAt) {
+      const expiry = proof.expiryDate || proof.expiresAt;
+      expiryDate = typeof expiry === 'number' 
+        ? BigInt(expiry) 
+        : BigInt(Math.floor(new Date(expiry).getTime() / 1000));
+    } else {
+      // Default: 1 year from now
+      expiryDate = BigInt(Math.floor(Date.now() / 1000)) + 365n * 24n * 60n * 60n;
+    }
     
     return {
       did,
       vcProofHash,
-      vcSignature: signature as `0x${string}`,
+      vcSignature: vcSignature as `0x${string}`,
       age: Math.floor(age),
       country: country.substring(0, 2).toUpperCase(), // ISO 2-letter code
       expiryDate,
