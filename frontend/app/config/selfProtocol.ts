@@ -31,7 +31,8 @@ export function createSelfAppConfig(userId: string) {
   
   // Scope must match what's configured in Self Protocol's backend
   // This scope is used by Self Protocol to identify which verification config to use
-  const scope = process.env.NEXT_PUBLIC_SELF_SCOPE || 'trustbridge';
+  // Try using 'attestify' scope if 'trustbridge' is not registered
+  const scope = process.env.NEXT_PUBLIC_SELF_SCOPE || 'attestify'; // Changed from 'trustbridge' to match Attestify
   
   // For contract integration, endpoint is the contract address
   // Self Protocol's backend will use this contract address + scope to find the verification config
