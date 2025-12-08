@@ -63,6 +63,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     isRegistrationSuccess,
     error: registrationError 
   } = useNgoRegistration();
+  
+  // Track approval confirmation state
+  const isApprovalConfirming = isRegistering && currentStep === 3;
 
   // Check if user is already registered - skip to end if so
   useEffect(() => {

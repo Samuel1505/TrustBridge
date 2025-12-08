@@ -67,7 +67,7 @@ export function useNgoRegistration() {
   const isRegistered = ngoData ? (ngoData as any).isActive === true : false;
 
   // Check cUSD allowance
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: CUSD_ADDRESS,
     abi: erc20Abi,
     functionName: 'allowance',
@@ -115,8 +115,9 @@ export function useNgoRegistration() {
       setIsLoading(false);
       setIsApproving(false);
       // Refetch allowance to update needsApproval
+      refetchAllowance();
     }
-  }, [isApprovalSuccess]);
+  }, [isApprovalSuccess, refetchAllowance]);
 
   /**
    * Register NGO with Self Protocol verification data
