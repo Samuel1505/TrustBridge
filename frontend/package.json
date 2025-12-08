@@ -14,6 +14,8 @@
     "@metamask/sdk": "^0.33.1",
     "@reown/appkit": "^1.8.14",
     "@reown/appkit-adapter-wagmi": "^1.8.14",
+    "@selfxyz/core": "^1.1.0-beta.7",
+    "@selfxyz/qrcode": "^1.0.17",
     "@tanstack/react-query": "^5.90.12",
     "@walletconnect/ethereum-provider": "^2.21.10",
     "framer-motion": "^12.23.25",

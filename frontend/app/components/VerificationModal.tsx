@@ -1,10 +1,14 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Wallet, QrCode, Upload, DollarSign, UserCircle, CheckCircle2, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { X, Wallet, QrCode, Upload, DollarSign, UserCircle, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useAccount, useWalletClient } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
+import { SelfQRcodeWrapper } from '@selfxyz/qrcode';
+import { createSelfApp, type SelfVerificationResult } from '../config/selfProtocol';
+import { processSelfProtocolResult, validateSelfProtocolData } from '../utils/selfProtocol';
+import type { SelfApp } from '@selfxyz/qrcode';
 
 interface VerificationModalProps {
   isOpen: boolean;
@@ -46,8 +50,25 @@ const steps = [
 
 export default function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const { isConnected } = useAccount();
+  const [selfApp, setSelfApp] = useState<SelfApp | null>(null);
+  const [verificationResult, setVerificationResult] = useState<SelfVerificationResult | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  
+  const { isConnected, address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const { open } = useAppKit();
+
+  // Initialize Self Protocol app when wallet is connected
+  useEffect(() => {
+    if (isConnected && address && currentStep === 2) {
+      try {
+        const app = createSelfApp(address);
+        setSelfApp(app);
+      } catch (error) {
+        console.error('Failed to initialize Self Protocol:', error);
+      }
+    }
+  }, [isConnected, address, currentStep]);
 
   const handleConnectWallet = () => {
     open();
@@ -63,6 +84,52 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleVerificationSuccess = (result: any) => {
+    console.log('Self Protocol verification successful:', result);
+    
+    // Process the verification result for contract registration
+    const processedData = processSelfProtocolResult(result);
+    
+    if (processedData) {
+      const validation = validateSelfProtocolData(processedData);
+      if (validation.valid) {
+        setVerificationResult({
+          success: true,
+          data: {
+            ...result,
+            processed: processedData,
+          },
+        });
+        setIsVerifying(false);
+        // Auto-advance to next step after successful verification
+        setTimeout(() => {
+          handleNextStep();
+        }, 1000);
+      } else {
+        setVerificationResult({
+          success: false,
+          error: validation.error || 'Invalid verification data',
+        });
+        setIsVerifying(false);
+      }
+    } else {
+      setVerificationResult({
+        success: false,
+        error: 'Failed to process verification result',
+      });
+      setIsVerifying(false);
+    }
+  };
+
+  const handleVerificationError = (error: any) => {
+    console.error('Self Protocol verification failed:', error);
+    setVerificationResult({
+      success: false,
+      error: error?.message || 'Verification failed',
+    });
+    setIsVerifying(false);
   };
 
   const currentStepData = steps[currentStep - 1];
@@ -190,27 +257,78 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
 
                     {currentStep === 2 && (
                       <div className="space-y-4">
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                          <div className="flex flex-col items-center text-center">
-                            <div className="w-48 h-48 bg-white rounded-xl shadow-lg flex items-center justify-center mb-4">
-                              <QrCode className="w-32 h-32 text-gray-400" />
-                            </div>
-                            <h4 className="font-semibold text-gray-900 mb-2">
-                              Scan with Self Protocol App
-                            </h4>
-                            <p className="text-sm text-gray-600 mb-4">
-                              Download the Self Protocol mobile app and scan this QR code to verify your biometric passport or national ID.
-                            </p>
-                            <div className="flex gap-3">
-                              <button className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
-                                Download for iOS
-                              </button>
-                              <button className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
-                                Download for Android
-                              </button>
+                        {!isConnected ? (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+                            <div className="flex items-center gap-3">
+                              <Wallet className="w-6 h-6 text-yellow-600" />
+                              <div>
+                                <h4 className="font-semibold text-gray-900">Please Connect Wallet First</h4>
+                                <p className="text-sm text-gray-600">You need to connect your wallet before verifying your identity.</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        ) : !selfApp ? (
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                            <div className="flex flex-col items-center text-center">
+                              <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                              <h4 className="font-semibold text-gray-900 mb-2">Initializing Self Protocol...</h4>
+                              <p className="text-sm text-gray-600">Setting up identity verification</p>
+                            </div>
+                          </div>
+                        ) : verificationResult?.success ? (
+                          <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle2 className="w-6 h-6 text-green-600" />
+                              <div>
+                                <h4 className="font-semibold text-gray-900">Verification Successful!</h4>
+                                <p className="text-sm text-gray-600">Your identity has been verified. Proceeding to next step...</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                            <div className="flex flex-col items-center text-center">
+                              <div className="w-full max-w-sm mb-4 bg-white rounded-xl p-4">
+                                <SelfQRcodeWrapper
+                                  selfApp={selfApp}
+                                  onSuccess={handleVerificationSuccess}
+                                  onError={handleVerificationError}
+                                />
+                              </div>
+                              <h4 className="font-semibold text-gray-900 mb-2">
+                                Scan with Self Protocol App
+                              </h4>
+                              <p className="text-sm text-gray-600 mb-4">
+                                Download the Self Protocol mobile app and scan this QR code to verify your biometric passport or national ID.
+                              </p>
+                              <div className="flex gap-3">
+                                <a
+                                  href="https://apps.apple.com/app/self-protocol"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                                >
+                                  Download for iOS
+                                </a>
+                                <a
+                                  href="https://play.google.com/store/apps/details?id=xyz.self.app"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                                >
+                                  Download for Android
+                                </a>
+                              </div>
+                              {verificationResult && !verificationResult.success && (
+                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                  <p className="text-sm text-red-600">
+                                    {verificationResult.error || 'Verification failed. Please try again.'}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
