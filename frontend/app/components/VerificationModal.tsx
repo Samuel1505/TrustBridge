@@ -1,10 +1,14 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Wallet, QrCode, Upload, DollarSign, UserCircle, CheckCircle2, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Loader2, Shield, AlertCircle, Smartphone, Monitor } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
+import { countries, SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qrcode';
+import { NGORegistryContract } from '../abi';
+import { useNgoRegistration } from '../hooks/useNgoRegistration';
+import { processSelfProtocolResult } from '../utils/selfProtocol';
 
 interface VerificationModalProps {
   isOpen: boolean;
@@ -21,33 +25,105 @@ const steps = [
   {
     id: 2,
     title: 'Self Protocol Verification',
-    description: 'Scan QR code with Self Protocol app to verify your identity',
+    description: 'Verify your identity using Self Protocol',
     icon: QrCode,
   },
   {
     id: 3,
-    title: 'Submit Credential',
-    description: 'Upload your verification credential from Self Protocol',
-    icon: Upload,
-  },
-  {
-    id: 4,
-    title: 'Pay Registration Fee',
-    description: 'Pay 1 cUSD registration fee to prevent spam',
+    title: 'Approve Registration Fee',
+    description: 'Approve 1 cUSD registration fee to prevent spam',
     icon: DollarSign,
   },
   {
-    id: 5,
-    title: 'Create NGO Profile',
-    description: 'Complete your NGO profile with mission and details',
+    id: 4,
+    title: 'Register NGO',
+    description: 'Complete registration with your verified identity',
     icon: UserCircle,
   },
 ];
 
 export default function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const { isConnected } = useAccount();
+  const [verificationStep, setVerificationStep] = useState<'intro' | 'qrcode' | 'mobile'>('intro');
+  const [selfApp, setSelfApp] = useState<any | null>(null);
+  const [universalLink, setUniversalLink] = useState('');
+  const [ipfsProfile, setIpfsProfile] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [verificationProofData, setVerificationProofData] = useState<any | null>(null);
+  
+  const { isConnected, address } = useAccount();
   const { open } = useAppKit();
+  const { 
+    registerNGO, 
+    approveCUSD, 
+    isRegistered, 
+    needsApproval, 
+    isLoading: isRegistering, 
+    isSuccess: registrationSuccess,
+    error: registrationError 
+  } = useNgoRegistration();
+
+  // Check if user is already registered - skip to end if so
+  useEffect(() => {
+    if (isConnected && isRegistered && isOpen) {
+      setCurrentStep(steps.length);
+    }
+  }, [isConnected, isRegistered, isOpen]);
+
+  // Initialize Self Protocol app when wallet is connected and on step 2
+  useEffect(() => {
+    if (!isOpen || !address || currentStep !== 2) return;
+
+    console.log('🔍 Initializing Self App...');
+    console.log('🔍 Address:', address);
+    console.log('🔍 Contract address:', NGORegistryContract.address);
+
+    try {
+      // Build Self App configuration - matching Attestify's exact approach
+      console.log('🔍 Building Self App with config:');
+      console.log('  - version: 2');
+      console.log('  - appName: TrustBridge');
+      console.log('  - scope: attestify');
+      console.log('  - userId:', address);
+      console.log('  - endpoint:', NGORegistryContract.address);
+      console.log('  - endpointType: staging_celo');
+      
+      const app = new SelfAppBuilder({
+        version: 2,
+        appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'TrustBridge',
+        scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'attestify',
+        endpoint: NGORegistryContract.address, // Contract address for staging_celo (matching Attestify format)
+        logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
+        userId: address,
+        endpointType: 'staging_celo', // Correct type for Celo Sepolia
+        userIdType: 'hex', // EVM address type
+        userDefinedData: `TrustBridge NGO registration for ${address}`,
+        disclosures: {
+          // Required verifications for NGO registration
+          minimumAge: 18,
+          excludedCountries: [
+            countries.CUBA,
+            countries.IRAN,
+            countries.NORTH_KOREA,
+            countries.RUSSIA,
+          ],
+          // Optional: Request additional information
+          nationality: true,
+        },
+      }).build();
+
+      console.log('✅ Self App built successfully:', app);
+      setSelfApp(app);
+
+      // Generate universal link for mobile users
+      const link = getUniversalLink(app);
+      console.log('✅ Universal link generated:', link);
+      setUniversalLink(link);
+    } catch (error: unknown) {
+      console.error('❌ Failed to initialize Self App:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to initialize verification');
+    }
+  }, [isOpen, address, currentStep]);
 
   const handleConnectWallet = () => {
     open();
@@ -65,266 +141,548 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
 
-  const currentStepData = steps[currentStep - 1];
-  const Icon = currentStepData.icon;
+  // Handle successful verification from Self Protocol
+  const handleSuccessfulVerification = async (proofData?: unknown) => {
+    console.log('✅ Identity verified by Self Protocol!');
+    console.log('Proof data received:', proofData);
+    
+    // Store the proof data for registration
+    setVerificationProofData(proofData);
+    
+    // Process the verification result
+    const processedData = processSelfProtocolResult(proofData);
+    
+    if (processedData) {
+      console.log('✅ Processed Self Protocol data:', processedData);
+      // Auto-advance to next step after successful verification
+      setTimeout(() => {
+        handleNextStep();
+      }, 1000);
+    } else {
+      setErrorMessage('Failed to process verification result. Please try again.');
+    }
+  };
+
+  // Handle verification error
+  const handleVerificationError = (data?: { error_code?: string; reason?: string; status?: string }) => {
+    console.error('❌ Verification failed:', data);
+    
+    // Extract error message from various possible formats
+    let errorMsg = 'Verification failed. Please try again.';
+    
+    if (data) {
+      if (typeof data === 'string') {
+        errorMsg = data;
+      } else if (data.reason) {
+        errorMsg = data.reason;
+      } else if (data.error_code) {
+        errorMsg = `Error: ${data.error_code}`;
+      } else if (data.status) {
+        errorMsg = `Verification failed with status: ${data.status}`;
+      } else if (data.message) {
+        errorMsg = data.message;
+      }
+    }
+    
+    setErrorMessage(errorMsg);
+    setVerificationStep('intro'); // Go back to intro to allow retry
+  };
+
+  // Start verification flow
+  const handleStartVerification = (method: 'desktop' | 'mobile') => {
+    if (method === 'desktop') {
+      setVerificationStep('qrcode');
+    } else {
+      setVerificationStep('mobile');
+    }
+  };
+
+  // Open Self App on mobile
+  const openSelfApp = () => {
+    if (!universalLink) return;
+    window.open(universalLink, '_blank');
+  };
+
+  // Handle cUSD approval
+  const handleApproveCUSD = async () => {
+    try {
+      await approveCUSD();
+      // Wait for approval transaction to complete
+      setTimeout(() => {
+        handleNextStep();
+      }, 2000);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to approve cUSD');
+    }
+  };
+
+  // Handle NGO registration
+  const handleRegisterNGO = async () => {
+    if (!verificationProofData) {
+      setErrorMessage('Verification data missing. Please complete verification first.');
+      return;
+    }
+
+    if (!ipfsProfile || ipfsProfile.trim().length === 0) {
+      setErrorMessage('Please enter an IPFS profile hash');
+      return;
+    }
+
+    try {
+      await registerNGO(verificationProofData, ipfsProfile.trim());
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to register NGO');
+    }
+  };
+
+  // Handle registration success
+  useEffect(() => {
+    if (registrationSuccess) {
+      console.log('✅ NGO registration successful!');
+      // Modal will close after a delay
+      setTimeout(() => {
+        onClose();
+      }, 3000);
+    }
+  }, [registrationSuccess, onClose]);
+
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-          />
-
-          {/* Modal */}
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
-            >
-              {/* Header */}
-              <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-700 p-8 text-white">
-                <button
-                  onClick={onClose}
-                  className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                    <Icon className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-bold">Verify Your Identity</h2>
-                    <p className="text-emerald-100 mt-1">
-                      Step {currentStep} of {steps.length}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="flex gap-2">
-                  {steps.map((step, index) => (
-                    <div
-                      key={step.id}
-                      className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden"
-                    >
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{
-                          width: index < currentStep ? '100%' : '0%',
-                        }}
-                        transition={{ duration: 0.3 }}
-                        className="h-full bg-white rounded-full"
-                      />
-                    </div>
-                  ))}
-                </div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-600 to-blue-600 p-6 text-white sticky top-0 z-10">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Register Your NGO</h2>
+                <p className="text-sm text-white/80 mt-1">Complete all steps to register</p>
               </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-              {/* Content */}
-              <div className="p-8">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentStep}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                      {currentStepData.title}
-                    </h3>
-                    <p className="text-gray-600 mb-8">
-                      {currentStepData.description}
-                    </p>
+            {/* Progress Steps */}
+            <div className="mt-6 flex items-center justify-between">
+              {steps.map((step, index) => {
+                const stepNumber = index + 1;
+                const isActive = currentStep === stepNumber;
+                const isCompleted = currentStep > stepNumber;
+                const Icon = step.icon;
 
-                    {/* Step-specific content */}
-                    {currentStep === 1 && (
-                      <div className="space-y-4">
-                        {!isConnected ? (
-                          <>
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6">
-                              <div className="flex items-start gap-3">
-                                <Wallet className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-1" />
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 mb-2">
-                                    Connect Your Celo Wallet
-                                  </h4>
-                                  <p className="text-sm text-gray-600 mb-4">
-                                    You'll need a Celo wallet to register your NGO and receive donations. We support MetaMask, Valora, and other popular wallets.
-                                  </p>
-                                  <button
-                                    onClick={handleConnectWallet}
-                                    className="w-full px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
-                                  >
-                                    <Wallet className="w-5 h-5" />
-                                    Connect Wallet
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </>
+                return (
+                  <div key={step.id} className="flex items-center flex-1">
+                    <div className="flex flex-col items-center flex-1">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                          isCompleted
+                            ? 'bg-white text-emerald-600'
+                            : isActive
+                            ? 'bg-white text-emerald-600 ring-4 ring-white/50'
+                            : 'bg-white/20 text-white'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle2 className="w-5 h-5" />
                         ) : (
-                          <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                            <div className="flex items-center gap-3">
-                              <CheckCircle2 className="w-6 h-6 text-green-600" />
-                              <div>
-                                <h4 className="font-semibold text-gray-900">Wallet Connected!</h4>
-                                <p className="text-sm text-gray-600">You can now proceed to the next step.</p>
-                              </div>
-                            </div>
-                          </div>
+                          <Icon className="w-5 h-5" />
                         )}
                       </div>
+                      <p
+                        className={`text-xs mt-2 text-center ${
+                          isActive ? 'text-white font-semibold' : 'text-white/60'
+                        }`}
+                      >
+                        {step.title}
+                      </p>
+                    </div>
+                    {stepNumber < steps.length && (
+                      <div
+                        className={`h-1 flex-1 mx-2 -mt-6 ${
+                          isCompleted ? 'bg-white' : 'bg-white/20'
+                        }`}
+                      />
                     )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-                    {currentStep === 2 && (
-                      <div className="space-y-4">
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                          <div className="flex flex-col items-center text-center">
-                            <div className="w-48 h-48 bg-white rounded-xl shadow-lg flex items-center justify-center mb-4">
-                              <QrCode className="w-32 h-32 text-gray-400" />
-                            </div>
-                            <h4 className="font-semibold text-gray-900 mb-2">
-                              Scan with Self Protocol App
-                            </h4>
-                            <p className="text-sm text-gray-600 mb-4">
-                              Download the Self Protocol mobile app and scan this QR code to verify your biometric passport or national ID.
-                            </p>
-                            <div className="flex gap-3">
-                              <button className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
-                                Download for iOS
-                              </button>
-                              <button className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
-                                Download for Android
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+          {/* Content */}
+          <div className="p-6">
+            {/* Step 1: Connect Wallet */}
+            {currentStep === 1 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-8"
+              >
+                <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Wallet className="w-10 h-10 text-emerald-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h3>
+                <p className="text-gray-600 mb-8">
+                  Connect your Celo wallet to start the NGO registration process
+                </p>
+                {!isConnected ? (
+                  <button
+                    onClick={handleConnectWallet}
+                    className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg"
+                  >
+                    Connect Wallet
+                  </button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                      <p className="text-sm text-emerald-800">
+                        ✅ Connected: {address?.substring(0, 6)}...{address?.substring(address.length - 4)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleNextStep}
+                      className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
+                    >
+                      Continue
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 2: Self Protocol Verification */}
+            {currentStep === 2 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-6"
+              >
+                {verificationStep === 'intro' && (
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Shield className="w-10 h-10 text-blue-600" />
                       </div>
-                    )}
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Identity Verification</h3>
+                      <p className="text-gray-600">
+                        Verify your identity using Self Protocol's zero-knowledge proofs
+                      </p>
+                    </div>
 
-                    {currentStep === 3 && (
-                      <div className="space-y-4">
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-emerald-500 transition-colors cursor-pointer">
-                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                          <h4 className="font-semibold text-gray-900 mb-2">
-                            Upload Verification Credential
-                          </h4>
-                          <p className="text-sm text-gray-600 mb-4">
-                            After completing verification in the Self Protocol app, upload your credential file here.
-                          </p>
-                          <button className="px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors">
-                            Choose File
-                          </button>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">Why verify?</h4>
+                      <ul className="space-y-2 text-sm text-blue-800">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span>Prove you're 18+ without revealing your age</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span>Verify nationality for compliance</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span>One-time verification process</span>
+                        </li>
+                      </ul>
+                    </div>
+
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => handleStartVerification('desktop')}
+                        disabled={!selfApp}
+                        className="flex-1 px-6 py-4 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-3"
+                      >
+                        <Monitor className="h-5 w-5" />
+                        <div className="text-left">
+                          <div>Verify on Desktop</div>
+                          <div className="text-xs opacity-90">Scan QR code</div>
                         </div>
-                      </div>
-                    )}
+                      </button>
 
-                    {currentStep === 4 && (
-                      <div className="space-y-4">
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-                          <div className="flex items-start gap-3">
-                            <DollarSign className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
-                            <div>
-                              <h4 className="font-semibold text-gray-900 mb-2">
-                                Registration Fee: 1 cUSD
-                              </h4>
-                              <p className="text-sm text-gray-600 mb-4">
-                                This small fee helps prevent spam and fake registrations. It's a one-time payment.
-                              </p>
-                              <div className="bg-white rounded-lg p-4 mb-4">
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm text-gray-600">Amount</span>
-                                  <span className="font-semibold text-gray-900">1 cUSD</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-600">Network Fee</span>
-                                  <span className="font-semibold text-gray-900">~0.001 CELO</span>
-                                </div>
-                              </div>
-                              <button className="w-full px-6 py-3 bg-amber-600 text-white font-semibold rounded-xl hover:bg-amber-700 transition-colors">
-                                Pay Registration Fee
-                              </button>
-                            </div>
-                          </div>
+                      <button
+                        onClick={() => handleStartVerification('mobile')}
+                        disabled={!selfApp || !universalLink}
+                        className="flex-1 px-6 py-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-3"
+                      >
+                        <Smartphone className="h-5 w-5" />
+                        <div className="text-left">
+                          <div>Verify on Mobile</div>
+                          <div className="text-xs opacity-90">Open Self app</div>
                         </div>
-                      </div>
-                    )}
+                      </button>
+                    </div>
 
-                    {currentStep === 5 && (
-                      <div className="space-y-4">
-                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-                          <div className="flex items-start gap-3">
-                            <UserCircle className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900 mb-4">
-                                Create Your NGO Profile
-                              </h4>
-                              <div className="space-y-3">
-                                <input
-                                  type="text"
-                                  placeholder="Organization Name"
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
-                                <textarea
-                                  placeholder="Mission Statement (300 characters max)"
-                                  rows={3}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
-                                <input
-                                  type="email"
-                                  placeholder="Contact Email"
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
-                                <input
-                                  type="url"
-                                  placeholder="Website (optional)"
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-
-                {/* Navigation Buttons */}
-                <div className="flex gap-3 mt-8">
-                  {currentStep > 1 && (
                     <button
                       onClick={handlePrevStep}
-                      className="px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:border-gray-400 transition-colors"
+                      className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
                     >
-                      Previous
+                      ← Back
                     </button>
-                  )}
-                  <button
-                    onClick={currentStep === steps.length ? onClose : handleNextStep}
-                    disabled={currentStep === 1 && !isConnected}
-                    className="flex-1 px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {currentStep === steps.length ? 'Complete Registration' : 'Continue'}
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
+                  </div>
+                )}
+
+                {/* QR Code Step */}
+                {verificationStep === 'qrcode' && selfApp && (
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 rounded-lg p-6 text-center">
+                      <p className="text-sm font-medium text-gray-900 mb-2">
+                        Scan with Self App
+                      </p>
+                      <p className="text-xs text-gray-600 mb-4">
+                        Use your phone's Self app to scan this QR code
+                      </p>
+                      
+                      <div className="flex justify-center bg-white rounded-xl p-4">
+                        <SelfQRcodeWrapper
+                          selfApp={selfApp}
+                          onSuccess={handleSuccessfulVerification}
+                          onError={handleVerificationError}
+                          size={280}
+                          darkMode={false}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-xs text-blue-900 font-medium mb-2">Instructions:</p>
+                      <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                        <li>Open the Self app on your mobile device</li>
+                        <li>Tap "Scan QR Code"</li>
+                        <li>Complete the verification steps</li>
+                        <li>You'll be verified automatically</li>
+                      </ol>
+                    </div>
+
+                    <button
+                      onClick={() => setVerificationStep('intro')}
+                      className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
+                    >
+                      ← Back to options
+                    </button>
+                  </div>
+                )}
+
+                {/* Mobile Step */}
+                {verificationStep === 'mobile' && (
+                  <div className="space-y-4">
+                    <div className="text-center py-6">
+                      <div className="h-16 w-16 bg-gradient-to-br from-emerald-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Smartphone className="h-8 w-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Open Self App
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-6">
+                        Complete verification directly in your Self mobile app
+                      </p>
+
+                      <button
+                        onClick={openSelfApp}
+                        disabled={!universalLink}
+                        className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50"
+                      >
+                        Open Self App
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setVerificationStep('intro')}
+                      className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
+                    >
+                      ← Back to options
+                    </button>
+                  </div>
+                )}
+
+                {errorMessage && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-sm text-red-600">{errorMessage}</p>
+                    <button
+                      onClick={() => {
+                        setErrorMessage('');
+                        setVerificationStep('intro');
+                      }}
+                      className="mt-2 text-sm text-red-700 underline"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 3: Approve Registration Fee */}
+            {currentStep === 3 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-8"
+              >
+                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <DollarSign className="w-10 h-10 text-yellow-600" />
                 </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Approve Registration Fee</h3>
+                <p className="text-gray-600 mb-4">
+                  You need to approve the <span className="font-semibold text-gray-900">1 cUSD</span> registration fee for the NGO Registry contract.
+                </p>
+                <p className="text-sm text-gray-500 mb-8">
+                  This fee helps prevent spam and ensures only serious NGOs register.
+                </p>
+                {needsApproval ? (
+                  <button
+                    onClick={handleApproveCUSD}
+                    disabled={isRegistering}
+                    className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center gap-2 mx-auto"
+                  >
+                    {isRegistering ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Approving...
+                      </>
+                    ) : (
+                      <>
+                        Approve 1 cUSD
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                      <p className="text-sm text-emerald-800">
+                        ✅ cUSD already approved
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleNextStep}
+                      className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
+                    >
+                      Continue
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={handlePrevStep}
+                  className="mt-4 w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
+                >
+                  ← Back
+                </button>
+              </motion.div>
+            )}
+
+            {/* Step 4: Register NGO */}
+            {currentStep === 4 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <UserCircle className="w-10 h-10 text-purple-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Register Your NGO</h3>
+                  <p className="text-gray-600">
+                    Complete your NGO registration with your verified identity
+                  </p>
+                </div>
+
+                {!registrationSuccess ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        IPFS Profile Hash
+                      </label>
+                      <input
+                        type="text"
+                        value={ipfsProfile}
+                        onChange={(e) => setIpfsProfile(e.target.value)}
+                        placeholder="Qm..."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                      <p className="mt-2 text-xs text-gray-500">
+                        Enter the IPFS hash of your NGO profile (e.g., Qm...). This should contain your NGO's details, mission, and verification documents.
+                      </p>
+                    </div>
+
+                    {registrationError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p className="text-sm text-red-600">{registrationError}</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={handlePrevStep}
+                        className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleRegisterNGO}
+                        disabled={isRegistering || !ipfsProfile.trim()}
+                        className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isRegistering ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Registering...
+                          </>
+                        ) : (
+                          <>
+                            Register NGO
+                            <ArrowRight className="w-5 h-5" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle2 className="w-10 h-10 text-green-600" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h3>
+                    <p className="text-gray-600 mb-4">
+                      Your NGO has been successfully registered on the blockchain.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      You can now receive donations through TrustBridge.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Error Display */}
+            {errorMessage && currentStep !== 2 && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-600">{errorMessage}</p>
+                <button
+                  onClick={() => setErrorMessage('')}
+                  className="mt-2 text-sm text-red-700 underline"
+                >
+                  Dismiss
+                </button>
               </div>
-            </motion.div>
+            )}
           </div>
-        </>
-      )}
+        </motion.div>
+      </div>
     </AnimatePresence>
   );
 }

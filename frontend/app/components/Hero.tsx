@@ -1,12 +1,15 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Heart } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
 import VerificationModal from './VerificationModal';
+import DonorVerificationModal from './DonorVerificationModal';
 
 export default function Hero() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNgoModalOpen, setIsNgoModalOpen] = useState(false);
+  const [isDonorModalOpen, setIsDonorModalOpen] = useState(false);
   return (
     <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-emerald-50/50 to-white">
       <div className="max-w-7xl mx-auto">
@@ -56,14 +59,18 @@ export default function Hero() {
               className="flex flex-col sm:flex-row gap-4"
             >
               <button 
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => setIsDonorModalOpen(true)}
                 className="group px-8 py-4 bg-emerald-600 text-white font-semibold rounded-full hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
-                Launch App
+                <Heart className="w-5 h-5" />
+                Browse NGOs & Donate
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-full border-2 border-gray-200 hover:border-emerald-600 hover:text-emerald-600 transition-all">
-                Register Your NGO
+              <button 
+                onClick={() => setIsNgoModalOpen(true)}
+                className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-full border-2 border-gray-200 hover:border-emerald-600 hover:text-emerald-600 transition-all"
+              >
+                Register as NGO
               </button>
             </motion.div>
 
@@ -153,7 +160,15 @@ export default function Hero() {
         </div>
       </div>
 
-      <VerificationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <VerificationModal 
+        isOpen={isNgoModalOpen} 
+        onClose={() => setIsNgoModalOpen(false)}
+      />
+      <DonorVerificationModal 
+        isOpen={isDonorModalOpen} 
+        onClose={() => setIsDonorModalOpen(false)}
+        onVerified={() => setIsDonorModalOpen(false)}
+      />
     </section>
   );
 }

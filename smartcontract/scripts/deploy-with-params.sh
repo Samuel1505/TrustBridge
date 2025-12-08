@@ -59,7 +59,7 @@ if [ -z "$SELF_PROTOCOL_VERIFIER" ] || [ -z "$CUSD_ADDRESS" ] || [ -z "$FEE_COLL
 fi
 
 # Convert registration fee to wei (18 decimals)
-REGISTRATION_FEE_WEI=$(node -e "const {parseEther} = require('viem'); console.log(parseEther('${REGISTRATION_FEE:-10}').toString())")
+REGISTRATION_FEE_WEI=$(node -e "const {parseEther} = require('viem'); console.log(parseEther('${REGISTRATION_FEE:-1}').toString())")
 
 # Build parameters JSON
 # Note: registrationFee should be passed as a string (not a number) to preserve precision
@@ -87,7 +87,7 @@ echo "📋 Parameters:"
 echo "   Self Protocol Verifier: $SELF_PROTOCOL_VERIFIER"
 echo "   cUSD Address: $CUSD_ADDRESS"
 echo "   Fee Collector: $FEE_COLLECTOR"
-echo "   Registration Fee: ${REGISTRATION_FEE:-10} cUSD ($REGISTRATION_FEE_WEI wei)"
+echo "   Registration Fee: ${REGISTRATION_FEE:-1} cUSD ($REGISTRATION_FEE_WEI wei)"
 if [ -n "$NETWORK" ]; then
     echo "   Network: $NETWORK"
 fi
