@@ -13,11 +13,22 @@ Self Protocol is used to verify NGO founders' identities using biometric passpor
 
 ### 1. Get Self Protocol Credentials
 
+**Important:** Even though we verify on-chain, Self Protocol still requires a backend endpoint to generate the initial proof. You have two options:
+
+**Option A: Use Self Protocol's Public Endpoint (Recommended for Testing)**
+- For staging/testing: `https://staging-api.self.xyz/api/verify`
+- For production: `https://api.self.xyz/api/verify`
+- Note: These endpoints may have rate limits or restrictions
+
+**Option B: Set Up Your Own Backend Endpoint**
+- Create a simple backend endpoint that uses Self Protocol's backend SDK
+- See [Self Protocol Backend Integration](https://docs.self.xyz/backend-integration/basic-integration) for details
+- Your endpoint should verify the proof and return the attestation
+
+**To get started:**
 1. Visit [Self Protocol Dashboard](https://cloud.self.xyz) or contact Self Protocol team
 2. Create an application and get:
-   - **Endpoint URL**: Your verification API endpoint
-     - Staging: `https://staging-api.self.xyz/api/verify`
-     - Production: `https://api.self.xyz/api/verify`
+   - **Endpoint URL**: Your verification API endpoint (see options above)
    - **Scope**: Your application scope identifier
    - **App Name**: Display name for your app
 

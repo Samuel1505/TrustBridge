@@ -138,9 +138,27 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
 
   const handleVerificationError = (error: any) => {
     console.error('Self Protocol verification failed:', error);
+    
+    let errorMessage = 'Verification failed';
+    
+    // Handle specific error types
+    if (error?.status === 'proof_generation_failed') {
+      errorMessage = 'Failed to generate proof. Please ensure:\n' +
+        '1. Self Protocol endpoint is configured correctly\n' +
+        '2. You have a valid identity document\n' +
+        '3. Your device has internet connection\n' +
+        '4. Try scanning the QR code again';
+    } else if (error?.reason) {
+      errorMessage = `Verification failed: ${error.reason}`;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
     setVerificationResult({
       success: false,
-      error: error?.message || 'Verification failed',
+      error: errorMessage,
     });
     setIsVerifying(false);
   };

@@ -44,7 +44,10 @@ export function createSelfApp(
   const config = getSelfProtocolConfig();
 
   if (!config.endpoint) {
-    throw new Error('NEXT_PUBLIC_SELF_ENDPOINT environment variable is required');
+    throw new Error(
+      'NEXT_PUBLIC_SELF_ENDPOINT environment variable is required. ' +
+      'Please set it to your Self Protocol verification endpoint (e.g., https://staging-api.self.xyz/api/verify or your backend endpoint)'
+    );
   }
 
   const app = new SelfAppBuilder({
