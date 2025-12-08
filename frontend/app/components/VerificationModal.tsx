@@ -59,7 +59,8 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     isRegistered, 
     needsApproval, 
     isLoading: isRegistering, 
-    isSuccess: registrationSuccess,
+    isApprovalSuccess,
+    isRegistrationSuccess,
     error: registrationError 
   } = useNgoRegistration();
 
@@ -214,14 +215,22 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const handleApproveCUSD = async () => {
     try {
       await approveCUSD();
-      // Wait for approval transaction to complete
-      setTimeout(() => {
-        handleNextStep();
-      }, 2000);
+      // Don't advance here - wait for isApprovalSuccess in useEffect
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to approve cUSD');
     }
   };
+  
+  // Advance to next step when approval is confirmed
+  useEffect(() => {
+    if (isApprovalSuccess && currentStep === 3) {
+      console.log('✅ Approval confirmed, advancing to registration step');
+      // Small delay to show success state
+      setTimeout(() => {
+        handleNextStep();
+      }, 1000);
+    }
+  }, [isApprovalSuccess, currentStep]);
 
   // Handle NGO registration
   const handleRegisterNGO = async () => {
@@ -244,14 +253,14 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
 
   // Handle registration success
   useEffect(() => {
-    if (registrationSuccess) {
+    if (isRegistrationSuccess) {
       console.log('✅ NGO registration successful!');
       // Modal will close after a delay
       setTimeout(() => {
         onClose();
       }, 3000);
     }
-  }, [registrationSuccess, onClose]);
+  }, [isRegistrationSuccess, onClose]);
 
   if (!isOpen) return null;
 
@@ -608,7 +617,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                   </p>
                 </div>
 
-                {!registrationSuccess ? (
+                {!isRegistrationSuccess ? (
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
