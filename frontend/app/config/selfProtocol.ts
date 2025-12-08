@@ -14,13 +14,24 @@ export const SELF_PROTOCOL_VERIFIER = '0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed7
 
 /**
  * Create Self Protocol app configuration
+ * 
+ * According to Self Protocol docs:
+ * - endpoint must be the contract address in lowercase
+ * - For contract integration, endpoint should be your SelfVerificationRoot contract
+ * - Frontend disclosure config must match contract verification config
+ * 
+ * @see https://docs.self.xyz/contract-integration/basic-integration
+ * @see https://docs.self.xyz/frontend-integration/qrcode-sdk
  */
 export function createSelfAppConfig(userId: string) {
+  // Contract address MUST be lowercase according to docs
+  const contractAddress = NGORegistryContract.address.toLowerCase();
+  
   return {
     version: 2,
     appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'TrustBridge',
     scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'trustbridge',
-    endpoint: NGORegistryContract.address, // Contract address for staging_celo
+    endpoint: contractAddress, // Contract address MUST be lowercase for staging_celo
     logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
     userId,
     endpointType: 'staging_celo' as const, // Correct type for Celo Sepolia
@@ -28,6 +39,7 @@ export function createSelfAppConfig(userId: string) {
     userDefinedData: `TrustBridge NGO registration for ${userId}`,
     disclosures: {
       // Required verifications for NGO registration
+      // NOTE: These MUST match your contract's verification config
       minimumAge: 18,
       excludedCountries: [
         countries.CUBA,

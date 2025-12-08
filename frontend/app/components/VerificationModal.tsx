@@ -76,13 +76,16 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     if (!isOpen || !address || currentStep !== 2) return;
 
     console.log('🔍 Initializing Self App...');
-    console.log('🔍 Address:', address);
-    console.log('🔍 Contract address:', process.env.NEXT_PUBLIC_NGO_REGISTRY_ADDRESS);
+    console.log('🔍 User address:', address);
+    console.log('🔍 Contract address:', NGORegistryContract.address);
 
     try {
       const config = createSelfAppConfig(address);
       
-      console.log('🔍 Building Self App with config:', config);
+      console.log('🔍 Building Self App with config:', {
+        ...config,
+        endpoint: config.endpoint, // Log the endpoint (should be lowercase)
+      });
       
       const app = new SelfAppBuilder(config).build();
 
@@ -95,7 +98,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
       setUniversalLink(link);
     } catch (error: unknown) {
       console.error('❌ Failed to initialize Self App:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to initialize verification');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to initialize verification';
+      setErrorMessage(errorMsg);
+      console.error('Error details:', error);
     }
   }, [isOpen, address, currentStep]);
 
