@@ -5,11 +5,9 @@ import { X, Wallet, QrCode, Upload, DollarSign, UserCircle, CheckCircle2, ArrowR
 import { useState, useEffect } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
-import { SelfQRcodeWrapper } from '@selfxyz/qrcode';
-import { createSelfApp, type SelfVerificationResult } from '../config/selfProtocol';
-import { processSelfProtocolResult, validateSelfProtocolData } from '../utils/selfProtocol';
+import { useSelfProtocol } from '../hooks/useSelfProtocol';
+import { processSelfProtocolResult } from '../utils/selfProtocol';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
-import type { SelfApp } from '@selfxyz/qrcode';
 
 interface VerificationModalProps {
   isOpen: boolean;
@@ -45,14 +43,12 @@ const steps = [
 
 export default function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selfApp, setSelfApp] = useState<SelfApp | null>(null);
-  const [verificationResult, setVerificationResult] = useState<SelfVerificationResult | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [ipfsProfile, setIpfsProfile] = useState('');
   
   const { isConnected, address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { open } = useAppKit();
+  const { verify, reset, isVerifying, result: verificationResult } = useSelfProtocol();
   const { 
     registerNGO, 
     approveCUSD, 
@@ -71,17 +67,14 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   }, [isConnected, isRegistered, isOpen]);
 
-  // Initialize Self Protocol app when wallet is connected
+  // Auto-advance to next step on successful verification
   useEffect(() => {
-    if (isConnected && address && currentStep === 2 && !isRegistered) {
-      try {
-        const app = createSelfApp(address);
-        setSelfApp(app);
-      } catch (error) {
-        console.error('Failed to initialize Self Protocol:', error);
-      }
+    if (verificationResult?.success && currentStep === 2) {
+      setTimeout(() => {
+        handleNextStep();
+      }, 1000);
     }
-  }, [isConnected, address, currentStep, isRegistered]);
+  }, [verificationResult, currentStep]);
 
   const handleConnectWallet = () => {
     open();
@@ -99,68 +92,12 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
 
-  const handleVerificationSuccess = (result: any) => {
-    console.log('Self Protocol verification successful:', result);
-    
-    // Process the verification result for contract registration
-    const processedData = processSelfProtocolResult(result);
-    
-    if (processedData) {
-      const validation = validateSelfProtocolData(processedData);
-      if (validation.valid) {
-        setVerificationResult({
-          success: true,
-          data: {
-            ...result,
-            processed: processedData,
-          },
-        });
-        setIsVerifying(false);
-        // Auto-advance to next step after successful verification
-        setTimeout(() => {
-          handleNextStep();
-        }, 1000);
-      } else {
-        setVerificationResult({
-          success: false,
-          error: validation.error || 'Invalid verification data',
-        });
-        setIsVerifying(false);
-      }
-    } else {
-      setVerificationResult({
-        success: false,
-        error: 'Failed to process verification result',
-      });
-      setIsVerifying(false);
+  const handleStartVerification = () => {
+    try {
+      verify();
+    } catch (error: any) {
+      console.error('Failed to start verification:', error);
     }
-  };
-
-  const handleVerificationError = (error: any) => {
-    console.error('Self Protocol verification failed:', error);
-    
-    let errorMessage = 'Verification failed';
-    
-    // Handle specific error types
-    if (error?.status === 'proof_generation_failed') {
-      errorMessage = 'Failed to generate proof. Please ensure:\n' +
-        '1. Self Protocol endpoint is configured correctly\n' +
-        '2. You have a valid identity document\n' +
-        '3. Your device has internet connection\n' +
-        '4. Try scanning the QR code again';
-    } else if (error?.reason) {
-      errorMessage = `Verification failed: ${error.reason}`;
-    } else if (error?.message) {
-      errorMessage = error.message;
-    } else if (typeof error === 'string') {
-      errorMessage = error;
-    }
-    
-    setVerificationResult({
-      success: false,
-      error: errorMessage,
-    });
-    setIsVerifying(false);
   };
 
   const currentStepData = steps[currentStep - 1];
@@ -300,14 +237,6 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                               </div>
                             </div>
                           </div>
-                        ) : !selfApp ? (
-                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                            <div className="flex flex-col items-center text-center">
-                              <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-                              <h4 className="font-semibold text-gray-900 mb-2">Initializing Self Protocol...</h4>
-                              <p className="text-sm text-gray-600">Setting up identity verification</p>
-                            </div>
-                          </div>
                         ) : verificationResult?.success ? (
                           <div className="bg-green-50 border border-green-200 rounded-xl p-6">
                             <div className="flex items-center gap-3">
@@ -321,45 +250,53 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                         ) : (
                           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                             <div className="flex flex-col items-center text-center">
-                              <div className="w-full mb-4 bg-white rounded-xl p-8 flex items-center justify-center">
-                                <div className="w-full max-w-md overflow-auto">
-                                  <div className="flex justify-center">
-                                    <SelfQRcodeWrapper
-                                      selfApp={selfApp}
-                                      onSuccess={handleVerificationSuccess}
-                                      onError={handleVerificationError}
-                                    />
-                                  </div>
-                                </div>
+                              <div className="w-24 h-24 bg-white rounded-xl shadow-lg flex items-center justify-center mb-6">
+                                <QrCode className="w-16 h-16 text-blue-600" />
                               </div>
                               <h4 className="font-semibold text-gray-900 mb-2">
-                                Scan with Self Protocol App
+                                Verify Your Identity with Self Protocol
                               </h4>
-                              <p className="text-sm text-gray-600 mb-4">
-                                Download the Self Protocol mobile app and scan this QR code to verify your biometric passport or national ID.
+                              <p className="text-sm text-gray-600 mb-6">
+                                Click the button below to open Self Protocol verification in a popup window. 
+                                You'll need to verify your identity using your biometric passport or national ID.
                               </p>
-                              <div className="flex gap-3">
-                                <a
-                                  href="https://apps.apple.com/app/self-protocol"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-                                >
-                                  Download for iOS
-                                </a>
-                                <a
-                                  href="https://play.google.com/store/apps/details?id=xyz.self.app"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-                                >
-                                  Download for Android
-                                </a>
-                              </div>
+                              <button
+                                onClick={handleStartVerification}
+                                disabled={isVerifying}
+                                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                {isVerifying ? (
+                                  <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Verifying...
+                                  </>
+                                ) : (
+                                  <>
+                                    <QrCode className="w-5 h-5" />
+                                    Start Verification
+                                  </>
+                                )}
+                              </button>
                               {verificationResult && !verificationResult.success && (
-                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                  <p className="text-sm text-red-600">
+                                <div className="mt-6 w-full p-4 bg-red-50 border border-red-200 rounded-lg">
+                                  <h5 className="font-semibold text-red-900 mb-2">Verification Failed</h5>
+                                  <p className="text-sm text-red-700 mb-3">
                                     {verificationResult.error || 'Verification failed. Please try again.'}
+                                  </p>
+                                  <button
+                                    onClick={() => {
+                                      reset();
+                                    }}
+                                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                                  >
+                                    Try Again
+                                  </button>
+                                </div>
+                              )}
+                              {isVerifying && (
+                                <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg">
+                                  <p className="text-sm text-blue-800">
+                                    A popup window should open. If it doesn't, please allow popups for this site.
                                   </p>
                                 </div>
                               )}

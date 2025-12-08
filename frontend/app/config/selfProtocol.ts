@@ -1,85 +1,74 @@
-import { SelfAppBuilder } from '@selfxyz/qrcode';
-import { countries } from '@selfxyz/qrcode';
-import type { SelfApp } from '@selfxyz/qrcode';
-
 /**
- * Self Protocol Configuration for TrustBridge
+ * Self Protocol Configuration
  * 
- * This configuration is used for NGO identity verification.
- * The disclosures must match the backend verification configuration.
- * 
- * Reference: https://docs.self.xyz/frontend-integration/qrcode-sdk
+ * Self Protocol provides privacy-preserving identity verification using zero-knowledge proofs.
+ * Learn more: https://docs.self.id
  */
 
-export interface SelfProtocolConfig {
-  appName: string;
-  scope: string;
-  endpoint: string;
-  logoBase64?: string;
+// Self Protocol Verifier address from deployed contract
+// This is the Identity Verification Hub (IVH) contract address on Celo Sepolia
+export const SELF_PROTOCOL_VERIFIER = '0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74';
+
+// Self Protocol API endpoints
+export const SELF_PROTOCOL_CONFIG = {
+  // Verification URL (production)
+  verificationUrl: 'https://app.self.id/verify',
+  
+  // Config ID from the smart contract (this is the verifier address)
+  configId: SELF_PROTOCOL_VERIFIER,
+  
+  // Chain ID for Celo Sepolia testnet
+  chainId: 11155712, // Celo Sepolia chain ID
+  
+  // Message event types from Self Protocol
+  events: {
+    success: 'SELF_VERIFICATION_SUCCESS',
+    error: 'SELF_VERIFICATION_ERROR',
+    cancelled: 'SELF_VERIFICATION_CANCELLED',
+  },
+  
+  // Trusted origins for postMessage communication
+  trustedOrigins: [
+    'https://app.self.id',
+    'https://self.id',
+  ],
+  
+  // Popup window dimensions
+  popup: {
+    width: 500,
+    height: 700,
+    features: 'scrollbars=yes,resizable=yes',
+  },
+} as const;
+
+/**
+ * Build Self Protocol verification URL
+ */
+export function buildVerificationUrl(walletAddress: string): string {
+  const params = new URLSearchParams({
+    configId: SELF_PROTOCOL_CONFIG.configId,
+    address: walletAddress,
+    chainId: SELF_PROTOCOL_CONFIG.chainId.toString(),
+  });
+  
+  return `${SELF_PROTOCOL_CONFIG.verificationUrl}?${params.toString()}`;
 }
 
 /**
- * Get Self Protocol configuration from environment variables
+ * Validate if message origin is from Self Protocol
  */
-export function getSelfProtocolConfig(): SelfProtocolConfig {
-  return {
-    appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'TrustBridge',
-    scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'trustbridge',
-    endpoint: process.env.NEXT_PUBLIC_SELF_ENDPOINT || '',
-    logoBase64: process.env.NEXT_PUBLIC_SELF_LOGO,
-  };
+export function isValidSelfProtocolOrigin(origin: string): boolean {
+  return SELF_PROTOCOL_CONFIG.trustedOrigins.some(trusted => 
+    origin.includes(trusted.replace('https://', ''))
+  );
 }
 
 /**
- * Create a SelfApp instance for NGO verification
- * 
- * @param userId - The user's Ethereum address (hex format)
- * @param userDefinedData - Optional data to pass to Self Protocol
- * @returns SelfApp instance
+ * Format popup window features string
  */
-export function createSelfApp(
-  userId: string,
-  userDefinedData?: string
-): SelfApp {
-  const config = getSelfProtocolConfig();
-
-  if (!config.endpoint) {
-    throw new Error(
-      'NEXT_PUBLIC_SELF_ENDPOINT environment variable is required. ' +
-      'Please set it to your Self Protocol verification endpoint (e.g., https://staging-api.self.xyz/api/verify or your backend endpoint)'
-    );
-  }
-
-  const app = new SelfAppBuilder({
-    version: 2,
-    appName: config.appName,
-    scope: config.scope,
-    endpoint: config.endpoint,
-    logoBase64: config.logoBase64 || 'https://i.postimg.cc/mrmVf9hm/self.png',
-    userId,
-    endpointType: 'staging_celo', // Use 'mainnet_celo' for production
-    userIdType: 'hex', // 'hex' for EVM address
-    userDefinedData: userDefinedData || 'TrustBridge NGO Registration',
-    disclosures: {
-      // Minimum age requirement (must be 18+ per contract)
-      minimumAge: 18,
-      
-      // Excluded countries (sanctions compliance)
-      excludedCountries: [
-        countries.CUBA,
-        countries.IRAN,
-        countries.NORTH_KOREA,
-        countries.RUSSIA,
-        countries.SYRIA,
-      ],
-      
-      // Request nationality and age verification
-      nationality: true,
-      gender: false, // Not required for NGO registration
-    },
-  }).build();
-
-  return app;
+export function getPopupFeatures(): string {
+  const { width, height, features } = SELF_PROTOCOL_CONFIG.popup;
+  return `width=${width},height=${height},${features}`;
 }
 
 /**
@@ -94,7 +83,7 @@ export interface SelfVerificationResult {
     country?: string;
     proof?: any;
     attestation?: any;
+    signature?: string;
   };
   error?: string;
 }
-
