@@ -38,10 +38,15 @@ export function createSelfAppConfig(userId: string) {
     endpointType: 'staging_celo',
   });
   
+  // Scope must match what's configured in Self Protocol's backend
+  // This scope is used by Self Protocol to identify which verification config to use
+  // IMPORTANT: The scope must be registered with Self Protocol's backend for your contract address
+  const scope = process.env.NEXT_PUBLIC_SELF_SCOPE || 'trustbridge';
+  
   const config: any = {
     version: 2,
     appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'TrustBridge',
-    scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'trustbridge',
+    scope: scope, // Must match backend configuration
     endpoint: contractAddress, // Contract address MUST be lowercase for staging_celo
     logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
     userId,
@@ -50,7 +55,7 @@ export function createSelfAppConfig(userId: string) {
     userDefinedData: `TrustBridge NGO registration for ${userId}`,
     disclosures: {
       // Required verifications for NGO registration
-      // NOTE: These MUST match your contract's verification config
+      // NOTE: These MUST match your contract's verification config AND backend config
       minimumAge: 18,
       excludedCountries: [
         countries.CUBA,
@@ -63,6 +68,12 @@ export function createSelfAppConfig(userId: string) {
       nationality: true,
     },
   };
+  
+  console.log('🔍 Scope Configuration:', {
+    scope,
+    contractAddress,
+    note: 'Scope must match Self Protocol backend configuration',
+  });
   
   // Add backend endpoint if provided (some Self Protocol setups require this)
   if (backendEndpoint) {
