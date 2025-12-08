@@ -222,14 +222,10 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
   
-  // Advance to next step when approval is confirmed
+  // Log approval success (user must manually click continue)
   useEffect(() => {
     if (isApprovalSuccess && currentStep === 3) {
-      console.log('✅ Approval confirmed, advancing to registration step');
-      // Small delay to show success state
-      setTimeout(() => {
-        handleNextStep();
-      }, 1000);
+      console.log('✅ Approval confirmed - waiting for user to click continue');
     }
   }, [isApprovalSuccess, currentStep]);
 
