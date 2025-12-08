@@ -125,6 +125,34 @@ For testing, you can use mock passports:
 - Verify Self Protocol app is initialized properly
 
 ### Verification Fails
+
+#### `proof_generation_failed` Error
+This error means Self Protocol's backend couldn't generate the proof. Common causes:
+
+1. **Backend Not Configured**: Self Protocol's backend needs to be configured for your contract address and scope
+   - Contact Self Protocol team or use their dashboard to register your contract
+   - Ensure your contract address is registered with Self Protocol's backend
+   - Verify the scope matches between frontend and backend
+
+2. **Disclosures Mismatch**: Frontend disclosures must exactly match backend verification config
+   - Check `minimumAge` matches (should be 18)
+   - Verify `excludedCountries` list matches
+   - Ensure `nationality: true` is set in backend config
+
+3. **Contract Not Registered**: When using contract integration with `endpointType: 'staging_celo'`, the contract address must be registered with Self Protocol
+   - The contract address acts as the endpoint identifier
+   - Self Protocol backend needs to know about this contract to generate proofs
+
+4. **Network Issues**: Check connectivity to Self Protocol's staging backend
+   - Verify you can reach Self Protocol's API
+   - Check for CORS or network restrictions
+
+**Solution**: Contact Self Protocol support or check their dashboard to ensure:
+- Your contract address (`0xdbb6bcea1e9a701ac2692550a0ae0d18bb48e899`) is registered
+- Your scope (`trustbridge`) is configured
+- Verification config matches your disclosures
+
+### Other Verification Issues
 - Check that disclosures match backend configuration
 - Ensure user meets age and country requirements
 - Verify Self Protocol endpoint is accessible
