@@ -35,7 +35,7 @@ export const config = wagmiAdapter.wagmiConfig;
 createAppKit({
   adapters: [wagmiAdapter],
   projectId,
-  networks,
+  networks: networks as any, // Type assertion needed for wagmi chains compatibility
   defaultNetwork: celoAlfajores,
   metadata: {
     name: 'TrustBridge',
