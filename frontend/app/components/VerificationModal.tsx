@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Loader2, Shield, AlertCircle, Smartphone, Monitor } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
+import { useRouter } from 'next/navigation';
 import { countries, SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qrcode';
 import { NGORegistryContract } from '../abi';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
@@ -253,7 +254,6 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   };
 
   // Handle registration success - redirect to NGO dashboard
-  const router = useRouter();
   useEffect(() => {
     if (isRegistrationSuccess) {
       console.log('✅ NGO registration successful!');
