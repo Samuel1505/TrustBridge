@@ -63,13 +63,15 @@ REGISTRATION_FEE_WEI=$(node -e "const {parseEther} = require('viem'); console.lo
 
 # Build parameters JSON
 # Note: registrationFee should be passed as a string (not a number) to preserve precision
+# stagingMode is set to true by default for testing with mock passport
 PARAMS=$(cat <<EOF
 {
   "TrustBridgeModule": {
     "selfProtocolVerifier": "$SELF_PROTOCOL_VERIFIER",
     "cUSD": "$CUSD_ADDRESS",
     "feeCollector": "$FEE_COLLECTOR",
-    "registrationFee": "$REGISTRATION_FEE_WEI"
+    "registrationFee": "$REGISTRATION_FEE_WEI",
+    "stagingMode": "true"
   }
 }
 EOF
@@ -88,6 +90,7 @@ echo "   Self Protocol Verifier: $SELF_PROTOCOL_VERIFIER"
 echo "   cUSD Address: $CUSD_ADDRESS"
 echo "   Fee Collector: $FEE_COLLECTOR"
 echo "   Registration Fee: ${REGISTRATION_FEE:-1} cUSD ($REGISTRATION_FEE_WEI wei)"
+echo "   Staging Mode: true (signature verification disabled for testing)"
 if [ -n "$NETWORK" ]; then
     echo "   Network: $NETWORK"
 fi
