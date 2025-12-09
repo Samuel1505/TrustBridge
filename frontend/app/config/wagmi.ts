@@ -1,5 +1,5 @@
 import { cookieStorage, createStorage, http } from 'wagmi';
-import { celoAlfajores } from 'wagmi/chains';
+import { celoSepolia } from 'wagmi/chains';
 import { createAppKit } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { QueryClient } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ if (!projectId) {
 export const queryClient = new QueryClient();
 
 // Define Celo Alfajores testnet
-const networks = [celoAlfajores];
+const networks = [celoSepolia];
 
 // Create Wagmi Adapter
 export const wagmiAdapter = new WagmiAdapter({
@@ -25,7 +25,7 @@ export const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks,
   transports: {
-    [celoAlfajores.id]: http(),
+    [celoSepolia.id]: http(),
   },
 });
 
@@ -36,7 +36,7 @@ createAppKit({
   adapters: [wagmiAdapter],
   projectId,
   networks: networks as any, // Type assertion needed for wagmi chains compatibility
-  defaultNetwork: celoAlfajores,
+  defaultNetwork: celoSepolia,
   metadata: {
     name: 'TrustBridge',
     description: 'Verified Donations on Blockchain',

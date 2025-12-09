@@ -6,6 +6,7 @@ import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Lo
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
+import { formatEther } from 'viem';
 import { countries, SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qrcode';
 import { NGORegistryContract } from '../abi';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
@@ -61,7 +62,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     registerNGO, 
     approveCUSD, 
     isRegistered, 
-    needsApproval, 
+    needsApproval,
+    hasEnoughBalance,
+    balance,
     isLoading: isRegistering, 
     isApprovalSuccess,
     isRegistrationSuccess,
@@ -603,6 +606,27 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                 <p className="text-gray-600 mb-4">
                   You need to approve the <span className="font-semibold text-gray-900">1 cUSD</span> registration fee for the NGO Registry contract.
                 </p>
+                
+                {/* Balance Display */}
+                {balance !== undefined && (
+                  <div className={`mb-4 p-3 rounded-lg border ${
+                    hasEnoughBalance 
+                      ? 'bg-emerald-50 border-emerald-200' 
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <p className={`text-sm font-medium ${
+                      hasEnoughBalance ? 'text-emerald-800' : 'text-red-800'
+                    }`}>
+                      {hasEnoughBalance ? '✓' : '⚠'} Your cUSD Balance: {formatEther(balance)} cUSD
+                      {!hasEnoughBalance && (
+                        <span className="block mt-1 text-xs">
+                          You need at least 1 cUSD to register. Please add more cUSD to your wallet.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+                
                 <p className="text-sm text-gray-500 mb-8">
                   This fee helps prevent spam and ensures only serious NGOs register.
                 </p>
@@ -626,8 +650,8 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                     ) : (
                       <button
                         onClick={handleApproveCUSD}
-                        disabled={isRegistering}
-                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center gap-2 mx-auto"
+                        disabled={isRegistering || !hasEnoughBalance}
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
                       >
                         {isRegistering ? (
                           <>
@@ -770,6 +794,24 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </p>
                     </div>
 
+                    {/* Balance Warning */}
+                    {balance !== undefined && !hasEnoughBalance && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800 mb-1">
+                              Insufficient cUSD Balance
+                            </p>
+                            <p className="text-sm text-red-600">
+                              You have {formatEther(balance)} cUSD, but you need at least 1 cUSD to register.
+                              Please add more cUSD to your wallet before proceeding.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {registrationError && (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                         <p className="text-sm text-red-600">{registrationError}</p>
@@ -785,8 +827,8 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </button>
                       <button
                         onClick={handleRegisterNGO}
-                        disabled={isRegistering || !ipfsProfile || isUploading}
-                        className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                        disabled={isRegistering || !ipfsProfile || isUploading || !hasEnoughBalance}
+                        className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isRegistering ? (
                           <>
