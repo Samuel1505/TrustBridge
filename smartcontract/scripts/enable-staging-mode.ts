@@ -7,30 +7,56 @@
  */
 
 import hre from "hardhat";
+import { network } from "hardhat";
 import { getAddress } from "viem";
 
 async function main() {
-  const network = hre.network.name;
-  console.log(`\n🔧 Enabling staging mode on ${network}...\n`);
+  const networkName = hre.network.name;
+  console.log(`\n🔧 Enabling staging mode on ${networkName}...\n`);
 
-  // Get contract address from environment or use default
-  const contractAddress = process.env.NGOREGISTRY_ADDRESS || "0xdBb6Bcea1e9a701aC2692550A0ae0d18BB48E899";
-  const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY || process.env.CELO_SEPOLIA_PRIVATE_KEY;
-
-  if (!adminPrivateKey) {
-    console.error("❌ Error: ADMIN_PRIVATE_KEY or CELO_SEPOLIA_PRIVATE_KEY not set");
-    console.error("   Please set one of these environment variables");
-    process.exit(1);
-  }
+  // Get contract address from environment or use deployed address
+  const contractAddress = process.env.NGOREGISTRY_ADDRESS || "0x8AE49C5d7c0718467Eae6492BE15222EA67a589A";
 
   console.log(`📋 Contract Address: ${contractAddress}`);
-  console.log(`📋 Network: ${network}\n`);
+  console.log(`📋 Network: ${networkName}\n`);
 
-  // Get the contract
-  const ngoRegistry = await hre.viem.getContractAt(
-    "NGORegistry",
-    contractAddress as `0x${string}`
-  );
+  // Connect to network
+  const { viem } = await network.connect();
+  
+  // Load ABI from frontend (same as test script)
+  const fs = await import("fs/promises");
+  const path = await import("path");
+  const abiPath = path.join(process.cwd(), "..", "frontend", "app", "abi", "NGORegistry.json");
+  const ngoRegistryAbiFile = JSON.parse(await fs.readFile(abiPath, "utf-8"));
+  const ngoRegistryAbi = Array.isArray(ngoRegistryAbiFile) ? ngoRegistryAbiFile : ngoRegistryAbiFile.abi || ngoRegistryAbiFile;
+
+  // Create contract instance
+  const ngoRegistry = {
+    address: contractAddress as `0x${string}`,
+    abi: ngoRegistryAbi,
+    read: {
+      stagingMode: async () => {
+        const publicClient = await viem.getPublicClient();
+        return publicClient.readContract({
+          address: contractAddress as `0x${string}`,
+          abi: ngoRegistryAbi,
+          functionName: "stagingMode",
+        });
+      },
+    },
+    write: {
+      updateStagingMode: async (args: [boolean], options: { account: any }) => {
+        const walletClient = await viem.getWalletClient({ account: options.account });
+        return walletClient.writeContract({
+          address: contractAddress as `0x${string}`,
+          abi: ngoRegistryAbi,
+          functionName: "updateStagingMode",
+          args,
+          account: options.account,
+        });
+      },
+    },
+  };
 
   // Check if staging mode function exists
   try {
@@ -45,7 +71,8 @@ async function main() {
 
     // Enable staging mode
     console.log("🔄 Enabling staging mode...");
-    const [account] = await hre.viem.getWalletClients();
+    const accounts = await viem.getWalletClients();
+    const account = accounts[0];
     
     const hash = await ngoRegistry.write.updateStagingMode([true], {
       account: account.account,
@@ -54,7 +81,8 @@ async function main() {
     console.log(`📤 Transaction hash: ${hash}`);
     console.log("⏳ Waiting for confirmation...");
 
-    await hre.viem.waitForTransactionReceipt({ hash });
+    const publicClient = await viem.getPublicClient();
+    await publicClient.waitForTransactionReceipt({ hash });
     console.log("✅ Staging mode enabled successfully!");
     console.log("\n⚠️  Note: Signature verification is now disabled for testing.");
     console.log("   Set stagingMode to false for production.\n");

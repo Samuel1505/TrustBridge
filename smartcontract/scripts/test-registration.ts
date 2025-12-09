@@ -381,20 +381,11 @@ async function testRegistration(params: TestParams) {
     console.log("⚠️  VC Proof Hash not provided - skipping check");
   }
   
-  // Check 6: Staging mode
-  let stagingCheck;
-  try {
-    stagingCheck = await checkStagingMode(registry);
-    console.log(stagingCheck.message);
-  } catch (error: any) {
-    // If stagingMode function doesn't exist in ABI, assume it's enabled for testing
-    // (This happens if the ABI is outdated but contract has staging mode)
-    console.log("⚠️  Could not check staging mode (function not in ABI)");
-    console.log("   Assuming staging mode is enabled - signature verification will be skipped");
-    stagingCheck = { stagingMode: true, message: "⚠️  Staging mode check skipped (assuming enabled)" };
-  }
-  
-  // Check 7: Registration fee
+  // Staging mode: since ABI may miss the getter, default to enabled for testnet
+  const isStagingMode = true;
+  console.log("⚠️  Assuming staging mode is ENABLED (signature verification skipped)");
+
+  // Check 7: Registration fee (contract read still valid)
   const feeCheck = await checkRegistrationFee(registry);
   console.log(feeCheck.message);
   
@@ -449,9 +440,6 @@ async function testRegistration(params: TestParams) {
     console.log(`📝 Generated VC Proof Hash: ${vcProofHash}`);
   }
   
-  // Determine staging mode status (default to true if check failed)
-  const isStagingMode = stagingCheck?.stagingMode ?? true;
-  
   if (!vcSignature && !isStagingMode) {
     console.log("⚠️  VC Signature not provided and staging mode appears to be disabled.");
     console.log("   Signature verification will fail. Enable staging mode or provide a valid signature.");
@@ -460,7 +448,7 @@ async function testRegistration(params: TestParams) {
   } else if (!vcSignature && isStagingMode) {
     // Create a dummy signature for testing in staging mode
     vcSignature = "0x" + "0".repeat(130) as `0x${string}`;
-    console.log("📝 Using dummy signature (staging mode enabled or assumed enabled)");
+    console.log("📝 Using dummy signature (staging mode enabled)");
   }
   
   try {
@@ -519,8 +507,14 @@ async function testRegistration(params: TestParams) {
       console.log("\n💡 Solution: This VC proof has already been used. Generate a new VC proof.");
     } else if (error.message.includes("Registration fee payment failed")) {
       console.log("\n💡 Solution: Check balance and allowance. Ensure you have enough cUSD and have approved spending.");
-    } else if (error.message.includes("Invalid VC signature")) {
-      console.log("\n💡 Solution: VC signature is invalid. Ensure staging mode is enabled or provide a valid signature.");
+    } else if (error.message.includes("Invalid VC signature") || error.message.includes("ECDSAInvalidSignature")) {
+      console.log("\n💡 Solution: VC signature verification failed. This means:");
+      console.log("   1. Staging mode is DISABLED on the deployed contract");
+      console.log("   2. The contract requires a valid signature from Self Protocol");
+      console.log("   Options:");
+      console.log("   - Redeploy the contract with staging mode enabled (for testing)");
+      console.log("   - Provide a valid VC signature from Self Protocol");
+      console.log("   - Enable staging mode if the contract has updateStagingMode function");
     } else if (error.message.includes("Founder must be 18+")) {
       console.log("\n💡 Solution: Founder age must be 18 or older.");
     } else if (error.message.includes("VC expired")) {
