@@ -27,7 +27,7 @@ import { config } from "dotenv";
 config();
 
 // Deployed contract addresses (update these if needed)
-const DEFAULT_REGISTRY_ADDRESS = "0x8AE49C5d7c0718467Eae6492BE15222EA67a589A"; // From DEPLOYED_ADDRESSES.md
+const DEFAULT_REGISTRY_ADDRESS = "0x4D47d268F5BdBd8926efa86C5205185550b9178d"; // Latest deployment with staging mode enabled
 const CUSD_ADDRESS = "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b"; // cUSD on Celo Sepolia
 const REGISTRATION_FEE = parseEther("1"); // 1 cUSD
 
