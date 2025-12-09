@@ -449,14 +449,18 @@ async function testRegistration(params: TestParams) {
     console.log(`📝 Generated VC Proof Hash: ${vcProofHash}`);
   }
   
-  if (!vcSignature && !stagingCheck.stagingMode) {
-    console.log("⚠️  VC Signature not provided and staging mode is disabled.");
+  // Determine staging mode status (default to true if check failed)
+  const isStagingMode = stagingCheck?.stagingMode ?? true;
+  
+  if (!vcSignature && !isStagingMode) {
+    console.log("⚠️  VC Signature not provided and staging mode appears to be disabled.");
     console.log("   Signature verification will fail. Enable staging mode or provide a valid signature.");
-    return;
-  } else if (!vcSignature && stagingCheck.stagingMode) {
+    console.log("   Note: Proceeding anyway to see actual error from contract.");
+    // Don't return - let it try and see what happens
+  } else if (!vcSignature && isStagingMode) {
     // Create a dummy signature for testing in staging mode
     vcSignature = "0x" + "0".repeat(130) as `0x${string}`;
-    console.log("📝 Using dummy signature (staging mode enabled)");
+    console.log("📝 Using dummy signature (staging mode enabled or assumed enabled)");
   }
   
   try {
