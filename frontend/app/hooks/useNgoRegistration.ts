@@ -39,7 +39,9 @@ export function useNgoRegistration() {
   // Wait for registration transaction
   const { 
     isLoading: isRegistrationConfirming, 
-    isSuccess: isRegistrationSuccess 
+    isSuccess: isRegistrationSuccess,
+    isError: isRegistrationError,
+    error: registrationError
   } = useWaitForTransactionReceipt({
     hash: registrationHash,
   });
@@ -78,6 +80,19 @@ export function useNgoRegistration() {
   });
 
   const needsApproval = allowance ? allowance < REGISTRATION_FEE : true;
+
+  // Check cUSD balance
+  const { data: balance, refetch: refetchBalance } = useReadContract({
+    address: CUSD_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address && isConnected ? [address] : undefined,
+    query: {
+      enabled: !!address && isConnected,
+    },
+  });
+
+  const hasEnoughBalance = balance ? balance >= REGISTRATION_FEE : false;
 
   /**
    * Approve cUSD for registration fee
@@ -134,6 +149,16 @@ export function useNgoRegistration() {
       throw new Error('You are already registered as an NGO');
     }
 
+    // Check balance before attempting registration
+    if (!hasEnoughBalance) {
+      throw new Error('Insufficient cUSD balance. You need at least 1 cUSD to register.');
+    }
+
+    // Check allowance
+    if (needsApproval) {
+      throw new Error('Please approve cUSD spending first. You need to approve 1 cUSD for the registration fee.');
+    }
+
     setIsLoading(true);
     setIsRegistering(true);
     setError(null);
@@ -180,6 +205,40 @@ export function useNgoRegistration() {
     }
   };
 
+  // Handle registration transaction errors
+  useEffect(() => {
+    if (isRegistrationError && registrationError) {
+      console.error('Registration transaction error:', registrationError);
+      let errorMessage = 'Transaction failed';
+      
+      // Parse error message to provide helpful feedback
+      const errorString = registrationError.message || String(registrationError);
+      if (errorString.includes('insufficient') || errorString.includes('balance')) {
+        errorMessage = 'Insufficient cUSD balance. You need at least 1 cUSD to register.';
+      } else if (errorString.includes('allowance') || errorString.includes('approve')) {
+        errorMessage = 'Insufficient cUSD allowance. Please approve cUSD spending first.';
+      } else if (errorString.includes('Registration fee payment failed')) {
+        errorMessage = 'Registration fee payment failed. Please ensure you have at least 1 cUSD and have approved the spending.';
+      } else if (errorString.includes('Already registered')) {
+        errorMessage = 'You are already registered as an NGO.';
+      } else if (errorString.includes('DID already used')) {
+        errorMessage = 'This identity has already been used to register an NGO.';
+      } else if (errorString.includes('VC already used')) {
+        errorMessage = 'This verification credential has already been used.';
+      } else if (errorString.includes('VC expired')) {
+        errorMessage = 'Your verification credential has expired. Please verify again.';
+      } else if (errorString.includes('Invalid VC signature')) {
+        errorMessage = 'Invalid verification signature. Please verify your identity again.';
+      } else {
+        errorMessage = `Transaction failed: ${errorString}`;
+      }
+      
+      setError(errorMessage);
+      setIsLoading(false);
+      setIsRegistering(false);
+    }
+  }, [isRegistrationError, registrationError]);
+
   // Refetch NGO data after successful registration
   useEffect(() => {
     if (isRegistrationSuccess) {
@@ -194,6 +253,8 @@ export function useNgoRegistration() {
     approveCUSD,
     isRegistered,
     needsApproval,
+    hasEnoughBalance,
+    balance,
     isLoading: isLoading || isPending || isApprovalConfirming || isRegistrationConfirming,
     isApprovalSuccess,
     isRegistrationSuccess,
