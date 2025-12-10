@@ -660,7 +660,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                 <p className="text-sm text-gray-500 mb-8">
                   This fee helps prevent spam and ensures only serious NGOs register.
                 </p>
-                {needsApproval ? (
+                    {needsApproval && !isApprovalSuccess ? (
                   <div className="space-y-4">
                     {isApprovalSuccess ? (
                       <div className="space-y-4">
