@@ -254,31 +254,31 @@ export function useNgoRegistration() {
       //   );
       //   console.log('✅ Simulation passed - transaction should succeed');
       // } catch (simError: any) {
-        console.error('❌ Simulation failed:', simError);
-        // Try to decode the error
-        let errorMsg = 'Transaction will fail';
-        try {
-          if (simError.data) {
-            const decoded = await decodeContractError(
-              simError,
-              NGORegistryContract.address,
-              provider
-            );
-            if (decoded) {
-              console.log('Decoded simulation error:', decoded);
-              errorMsg = getErrorMessage(decoded.errorName);
-            } else {
-              errorMsg = simError.message || 'Transaction simulation failed';
-            }
-          } else {
-            errorMsg = simError.message || 'Transaction simulation failed';
-          }
-        } catch (e) {
-          console.log('Could not decode simulation error:', e);
-          errorMsg = simError.message || 'Transaction simulation failed';
-        }
-        throw new Error(errorMsg);
-      }
+      //   console.error('❌ Simulation failed:', simError);
+      //   // Try to decode the error
+      //   let errorMsg = 'Transaction will fail';
+      //   try {
+      //     if (simError.data) {
+      //       const decoded = await decodeContractError(
+      //         simError,
+      //         NGORegistryContract.address,
+      //         provider
+      //       );
+      //       if (decoded) {
+      //         console.log('Decoded simulation error:', decoded);
+      //         errorMsg = getErrorMessage(decoded.errorName);
+      //       } else {
+      //         errorMsg = simError.message || 'Transaction simulation failed';
+      //       }
+      //     } else {
+      //       errorMsg = simError.message || 'Transaction simulation failed';
+      //     }
+      //   } catch (e) {
+      //     console.log('Could not decode simulation error:', e);
+      //     errorMsg = simError.message || 'Transaction simulation failed';
+      //   }
+      //   throw new Error(errorMsg);
+      // }
 
       // Call registerNGO on the contract
       const tx = await contract.registerNGO(
