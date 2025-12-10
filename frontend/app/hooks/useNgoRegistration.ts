@@ -288,7 +288,10 @@ export function useNgoRegistration() {
     fetchStagingMode();
   }, [provider]);
 
-  const isRegistered = ngoData ? ngoData.isActive === true : false;
+  // Check if user is registered - use cached status as fallback while checking
+  const cachedRegistered = address ? localStorage.getItem(`ngo_registered_${address.toLowerCase()}`) === 'true' : false;
+  const isRegistered = (ngoData && ngoData.isActive === true) || 
+                       (cachedRegistered && isCheckingRegistration && !ngoData);
   const needsApproval = allowance ? allowance < REGISTRATION_FEE : true;
   const hasEnoughBalance = balance !== undefined ? balance >= REGISTRATION_FEE : undefined;
 
