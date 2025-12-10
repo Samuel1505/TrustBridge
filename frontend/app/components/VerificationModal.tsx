@@ -794,6 +794,40 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </p>
                     </div>
 
+                    {/* Approval Required Warning */}
+                    {needsApproval && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-yellow-800 mb-1">
+                              Approval Required
+                            </p>
+                            <p className="text-sm text-yellow-700 mb-3">
+                              You need to approve cUSD spending before you can register. Please approve 1 cUSD for the registration fee.
+                            </p>
+                            <button
+                              onClick={handleApproveCUSD}
+                              disabled={isRegistering || !hasEnoughBalance}
+                              className="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                              {isRegistering ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  {approvalHash ? 'Confirming...' : 'Approving...'}
+                                </>
+                              ) : (
+                                <>
+                                  Approve 1 cUSD
+                                  <ArrowRight className="w-4 h-4" />
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Balance Warning */}
                     {balance !== undefined && !hasEnoughBalance && (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -827,7 +861,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </button>
                       <button
                         onClick={handleRegisterNGO}
-                        disabled={isRegistering || !ipfsProfile || isUploading || !hasEnoughBalance}
+                        disabled={isRegistering || !ipfsProfile || isUploading || !hasEnoughBalance || needsApproval}
                         className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isRegistering ? (
