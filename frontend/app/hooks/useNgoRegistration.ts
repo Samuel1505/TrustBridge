@@ -102,9 +102,9 @@ export function useNgoRegistration() {
     initProvider();
   }, []);
 
-  // Fetch NGO data with retry logic and caching
+  // Check registration status using the simpler isVerified function
   useEffect(() => {
-    const fetchNgoData = async (retryCount = 0) => {
+    const checkRegistration = async (retryCount = 0) => {
       if (!address || !provider) {
         setNgoData(null);
         setIsCheckingRegistration(false);
@@ -132,18 +132,20 @@ export function useNgoRegistration() {
           NGORegistryContract.abi,
           provider
         );
-        const data = await contract.ngoByWallet(address);
         
-        // Always store the data if we get it, regardless of isActive status
-        setNgoData(data);
+        // Use the simpler isVerified function instead of fetching full struct
+        const isVerified = await contract.isVerified(address);
         
-        // Cache the registration status
-        if (data && data.isActive === true) {
+        // Also fetch full data if verified (for dashboard display)
+        if (isVerified) {
+          const data = await contract.ngoByWallet(address);
+          setNgoData(data);
           localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'true');
-          console.log('✅ User is registered as NGO (cached)');
+          console.log('✅ User is verified as NGO (cached)');
         } else {
+          setNgoData(null);
           localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'false');
-          console.log('ℹ️ User is not registered as NGO');
+          console.log('ℹ️ User is not verified as NGO');
         }
         
         setIsCheckingRegistration(false);
@@ -155,28 +157,22 @@ export function useNgoRegistration() {
         
         // Only log non-RPC errors to avoid console spam
         if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
-          console.error('Error fetching NGO data:', error);
+          console.error('Error checking registration:', error);
         }
         
         // Retry logic for RPC errors
         if ((error?.code === 'CALL_EXCEPTION' || error?.code === 'NETWORK_ERROR') && retryCount < maxRetries) {
-          console.log(`⚠️ RPC error fetching NGO data, retrying... (${retryCount + 1}/${maxRetries})`);
+          console.log(`⚠️ RPC error checking registration, retrying... (${retryCount + 1}/${maxRetries})`);
           setRegistrationCheckAttempts(retryCount + 1);
-          
-          // If we have cached registration status, use it temporarily
-          if (wasRegistered && !ngoData) {
-            console.log('📦 Using cached registration status while retrying...');
-            // Don't set ngoData to a fake object, but mark as checking
-          }
           
           // Retry after delay
           setTimeout(() => {
-            fetchNgoData(retryCount + 1);
+            checkRegistration(retryCount + 1);
           }, retryDelay);
         } else {
           // Max retries reached or non-RPC error
           if (retryCount >= maxRetries) {
-            console.log('⚠️ Max retries reached for fetching NGO data');
+            console.log('⚠️ Max retries reached for checking registration');
           }
           
           // If we have cached registration status and previous data, preserve it
@@ -193,7 +189,7 @@ export function useNgoRegistration() {
       }
     };
 
-    fetchNgoData();
+    checkRegistration();
   }, [address, provider]);
 
   // Fetch allowance
