@@ -894,8 +894,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </button>
                       <button
                         onClick={handleRegisterNGO}
-                        disabled={isLoading || !ipfsProfile || isUploading || hasEnoughBalance === false || (needsApproval && !isApprovalSuccess)}
+                        disabled={isLoading || !ipfsProfile || isUploading}
                         className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        title={!ipfsProfile ? 'Please upload an image first' : (isLoading ? 'Processing...' : (isUploading ? 'Uploading image...' : 'Click to register'))}
                       >
                         {isLoading ? (
                           <>
