@@ -1,266 +1,288 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther, erc20Abi } from 'viem';
+import { BrowserProvider, Contract, parseUnits } from 'ethers';
 import { NGORegistryContract } from '../abi';
 import { processSelfProtocolResult } from '../utils/selfProtocol';
+import { decodeContractError, getErrorMessage } from '../utils/errorDecoder';
 
 // cUSD address on Celo Sepolia
-const CUSD_ADDRESS = '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b' as `0x${string}`;
-const REGISTRATION_FEE = parseEther('1');
+const CUSD_ADDRESS = '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b';
+const REGISTRATION_FEE = parseUnits('1', 18); // 1 cUSD
 
-/**
- * Hook for NGO registration with Self Protocol verification
- * 
- * This hook handles:
- * 1. Checking if user is already registered
- * 2. Processing Self Protocol verification result
- * 3. Approving cUSD for registration fee
- * 4. Calling registerNGO() on the contract
- */
+// ERC20 ABI
+const ERC20_ABI = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)',
+];
+
 export function useNgoRegistration() {
+  const [address, setAddress] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [provider, setProvider] = useState<BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<any>(null);
+  
+  const [ngoData, setNgoData] = useState<any>(null);
+  const [allowance, setAllowance] = useState<bigint | null>(null);
+  const [balance, setBalance] = useState<bigint | null>(null);
+  
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [approvalHash, setApprovalHash] = useState<`0x${string}` | undefined>();
-  const [registrationHash, setRegistrationHash] = useState<`0x${string}` | undefined>();
   const [isApproving, setIsApproving] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  
-  const { address, isConnected } = useAccount();
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  
-  // Wait for approval transaction
-  const { 
-    isLoading: isApprovalConfirming, 
-    isSuccess: isApprovalSuccess 
-  } = useWaitForTransactionReceipt({
-    hash: approvalHash,
-  });
-  
-  // Wait for registration transaction
-  const { 
-    isLoading: isRegistrationConfirming, 
-    isSuccess: isRegistrationSuccess,
-    isError: isRegistrationError,
-    error: registrationError
-  } = useWaitForTransactionReceipt({
-    hash: registrationHash,
-  });
-  
-  // Track approval hash from writeContract
+  const [error, setError] = useState<string | null>(null);
+  const [isApprovalSuccess, setIsApprovalSuccess] = useState(false);
+  const [isRegistrationSuccess, setIsRegistrationSuccess] = useState(false);
+  const [approvalHash, setApprovalHash] = useState<string | undefined>();
+  const [registrationHash, setRegistrationHash] = useState<string | undefined>();
+
+  // Initialize provider and wallet
   useEffect(() => {
-    if (hash && isApproving) {
-      setApprovalHash(hash);
-    } else if (hash && isRegistering) {
-      setRegistrationHash(hash);
-    }
-  }, [hash, isApproving, isRegistering]);
+    const initProvider = async () => {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          const provider = new BrowserProvider(window.ethereum);
+          setProvider(provider);
+          
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setAddress(accounts[0].address);
+            setIsConnected(true);
+            setSigner(await provider.getSigner());
+          } else {
+            setAddress(null);
+            setIsConnected(false);
+            setSigner(null);
+          }
 
-  // Check if user is already registered
-  const { data: ngoData, refetch: refetchNgo } = useReadContract({
-    address: NGORegistryContract.address as `0x${string}`,
-    abi: NGORegistryContract.abi,
-    functionName: 'ngoByWallet',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
+          window.ethereum.on('accountsChanged', async (accounts: string[]) => {
+            if (accounts.length > 0) {
+              setAddress(accounts[0]);
+              setIsConnected(true);
+              setSigner(await provider.getSigner());
+            } else {
+              setAddress(null);
+              setIsConnected(false);
+              setSigner(null);
+            }
+            setNgoData(null);
+            setAllowance(null);
+            setBalance(null);
+          });
 
-  const isRegistered = ngoData ? (ngoData as any).isActive === true : false;
+          window.ethereum.on('chainChanged', () => {
+            window.location.reload();
+          });
+        } catch (error) {
+          console.error('Error initializing provider:', error);
+        }
+      }
+    };
 
-  // Check cUSD allowance
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: CUSD_ADDRESS,
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args: address && isConnected ? [address, NGORegistryContract.address as `0x${string}`] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
+    initProvider();
+  }, []);
 
-  const needsApproval = allowance ? allowance < REGISTRATION_FEE : true;
+  // Check if user is registered - simple check
+  useEffect(() => {
+    const checkRegistration = async () => {
+      if (!address || !provider) {
+        setNgoData(null);
+        return;
+      }
 
-  // Check cUSD balance
-  const { data: balance, refetch: refetchBalance } = useReadContract({
-    address: CUSD_ADDRESS,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: address && isConnected ? [address] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
+      try {
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155711n) {
+          setNgoData(null);
+          return;
+        }
 
-  const hasEnoughBalance = balance ? balance >= REGISTRATION_FEE : false;
+        const contract = new Contract(
+          NGORegistryContract.address,
+          NGORegistryContract.abi,
+          provider
+        );
+        
+        const isVerified = await contract.isVerified(address);
+        if (isVerified) {
+          const data = await contract.ngoByWallet(address);
+          setNgoData(data);
+        } else {
+          setNgoData(null);
+        }
+      } catch (error) {
+        console.error('Error checking registration:', error);
+        setNgoData(null);
+      }
+    };
 
-  /**
-   * Approve cUSD for registration fee
-   */
+    checkRegistration();
+  }, [address, provider]);
+
+  // Check allowance - refresh periodically and after approval
+  useEffect(() => {
+    const checkAllowance = async () => {
+      if (!address || !provider) {
+        setAllowance(null);
+        return;
+      }
+
+      try {
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155711n) {
+          setAllowance(null);
+          return;
+        }
+
+        const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
+        const allowanceValue = await cUSDContract.allowance(address, NGORegistryContract.address);
+        console.log('🔍 Current allowance:', allowanceValue.toString(), 'Required:', REGISTRATION_FEE.toString());
+        setAllowance(allowanceValue);
+        
+        if (allowanceValue >= REGISTRATION_FEE) {
+          setIsApprovalSuccess(true);
+          console.log('✅ Allowance is sufficient');
+        } else {
+          setIsApprovalSuccess(false);
+          console.log('⚠️ Allowance is insufficient');
+        }
+      } catch (error) {
+        console.error('Error checking allowance:', error);
+        setAllowance(null);
+        setIsApprovalSuccess(false);
+      }
+    };
+
+    checkAllowance();
+    
+    // Refresh allowance every 5 seconds to catch updates
+    const interval = setInterval(checkAllowance, 5000);
+    return () => clearInterval(interval);
+  }, [address, provider]);
+
+  // Check balance
+  useEffect(() => {
+    const checkBalance = async () => {
+      if (!address || !provider) return;
+
+      try {
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155711n) return;
+
+        const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
+        const balanceValue = await cUSDContract.balanceOf(address);
+        setBalance(balanceValue);
+      } catch (error) {
+        console.error('Error checking balance:', error);
+        setBalance(null);
+      }
+    };
+
+    checkBalance();
+  }, [address, provider]);
+
+  const isRegistered = ngoData && ngoData.isActive === true;
+  const needsApproval = allowance === null || allowance < REGISTRATION_FEE;
+  const hasEnoughBalance = balance !== null && balance !== undefined ? balance >= REGISTRATION_FEE : undefined;
+
+  // Approve cUSD
   const approveCUSD = async () => {
-    if (!address || !isConnected) {
-      throw new Error('Wallet not connected');
-    }
+    if (!address || !signer) throw new Error('Wallet not connected');
 
     setIsLoading(true);
     setIsApproving(true);
     setError(null);
     setApprovalHash(undefined);
+    setIsApprovalSuccess(false);
 
     try {
-      writeContract({
-        address: CUSD_ADDRESS,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [NGORegistryContract.address as `0x${string}`, REGISTRATION_FEE],
-      });
-      // Hash will be set via useEffect when writeContract returns it
+      const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, signer);
+      const tx = await cUSDContract.approve(NGORegistryContract.address, REGISTRATION_FEE);
+      setApprovalHash(tx.hash);
+      const receipt = await tx.wait();
+      console.log('✅ Approval transaction confirmed:', receipt);
+      
+      // Refresh allowance immediately after approval
+      const cUSDContractRead = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
+      const allowanceValue = await cUSDContractRead.allowance(address, NGORegistryContract.address);
+      setAllowance(allowanceValue);
+      console.log('✅ Refreshed allowance after approval:', allowanceValue.toString());
+      
+      if (allowanceValue >= REGISTRATION_FEE) {
+        setIsApprovalSuccess(true);
+      }
     } catch (err: any) {
       console.error('Approval error:', err);
-      setError(err.message || 'Failed to approve cUSD');
+      const decodedError = await decodeContractError(err, NGORegistryContract.address, provider);
+      setError(getErrorMessage(decodedError?.errorName || err.message));
+    } finally {
       setIsLoading(false);
       setIsApproving(false);
     }
   };
   
-  // Reset loading state when approval is successful
-  useEffect(() => {
-    if (isApprovalSuccess) {
-      console.log('✅ cUSD approval confirmed!');
-      setIsLoading(false);
-      setIsApproving(false);
-      // Refetch allowance to update needsApproval
-      refetchAllowance();
-    }
-  }, [isApprovalSuccess, refetchAllowance]);
-
-  /**
-   * Register NGO with Self Protocol verification data
-   */
-  const registerNGO = async (
-    selfProtocolResult: any,
-    ipfsProfile: string
-  ) => {
-    if (!address || !isConnected) {
-      throw new Error('Wallet not connected');
-    }
-
-    if (isRegistered) {
-      throw new Error('You are already registered as an NGO');
-    }
-
-    // Check balance before attempting registration
-    if (!hasEnoughBalance) {
-      throw new Error('Insufficient cUSD balance. You need at least 1 cUSD to register.');
-    }
-
-    // Check allowance
-    if (needsApproval) {
-      throw new Error('Please approve cUSD spending first. You need to approve 1 cUSD for the registration fee.');
-    }
+  // Register NGO
+  const registerNGO = async (selfProtocolResult: any, ipfsProfile: string) => {
+    if (!address || !signer) throw new Error('Wallet not connected');
+    if (isRegistered) throw new Error('You are already registered');
+    if (hasEnoughBalance === false) throw new Error('Insufficient cUSD balance');
+    if (needsApproval) throw new Error('Please approve cUSD first');
 
     setIsLoading(true);
     setIsRegistering(true);
     setError(null);
-    setRegistrationHash(undefined);
+    setIsRegistrationSuccess(false);
 
     try {
-      // Process Self Protocol result
       const processedData = processSelfProtocolResult(selfProtocolResult);
-      if (!processedData) {
-        throw new Error('Failed to process Self Protocol verification result');
-      }
+      if (!processedData) throw new Error('Failed to process verification result');
+      if (processedData.age < 18) throw new Error('Founder must be 18 or older');
+      if (!ipfsProfile || ipfsProfile.length === 0) throw new Error('IPFS profile is required');
 
-      // Validate the data
-      if (processedData.age < 18) {
-        throw new Error('Founder must be 18 or older');
-      }
+      const contract = new Contract(
+        NGORegistryContract.address,
+        NGORegistryContract.abi,
+        signer
+      );
 
-      if (!ipfsProfile || ipfsProfile.length === 0) {
-        throw new Error('IPFS profile is required');
-      }
-
-      // Call registerNGO on the contract
-      // The contract will verify the signature on-chain
-      writeContract({
-        address: NGORegistryContract.address as `0x${string}`,
-        abi: NGORegistryContract.abi,
-        functionName: 'registerNGO',
-        args: [
-          processedData.did,
-          processedData.vcProofHash,
-          processedData.vcSignature,
-          processedData.age,
-          processedData.country,
-          ipfsProfile,
-          processedData.expiryDate,
-        ],
-      });
-      // Hash will be set via useEffect when writeContract returns it
+      const tx = await contract.registerNGO(
+        processedData.did,
+        processedData.vcProofHash,
+        processedData.vcSignature,
+        processedData.age,
+        processedData.country,
+        ipfsProfile,
+        processedData.expiryDate,
+      );
+      setRegistrationHash(tx.hash);
+      await tx.wait();
+      setIsRegistrationSuccess(true);
+      
+      // Refresh NGO data
+      const data = await contract.ngoByWallet(address);
+      setNgoData(data);
     } catch (err: any) {
       console.error('Registration error:', err);
-      setError(err.message || 'Failed to register NGO');
+      const decodedError = await decodeContractError(err, NGORegistryContract.address, provider);
+      setError(getErrorMessage(decodedError?.errorName || err.message));
+    } finally {
       setIsLoading(false);
       setIsRegistering(false);
     }
   };
-
-  // Handle registration transaction errors
-  useEffect(() => {
-    if (isRegistrationError && registrationError) {
-      console.error('Registration transaction error:', registrationError);
-      let errorMessage = 'Transaction failed';
-      
-      // Parse error message to provide helpful feedback
-      const errorString = registrationError.message || String(registrationError);
-      if (errorString.includes('insufficient') || errorString.includes('balance')) {
-        errorMessage = 'Insufficient cUSD balance. You need at least 1 cUSD to register.';
-      } else if (errorString.includes('allowance') || errorString.includes('approve')) {
-        errorMessage = 'Insufficient cUSD allowance. Please approve cUSD spending first.';
-      } else if (errorString.includes('Registration fee payment failed')) {
-        errorMessage = 'Registration fee payment failed. Please ensure you have at least 1 cUSD and have approved the spending.';
-      } else if (errorString.includes('Already registered')) {
-        errorMessage = 'You are already registered as an NGO.';
-      } else if (errorString.includes('DID already used')) {
-        errorMessage = 'This identity has already been used to register an NGO.';
-      } else if (errorString.includes('VC already used')) {
-        errorMessage = 'This verification credential has already been used.';
-      } else if (errorString.includes('VC expired')) {
-        errorMessage = 'Your verification credential has expired. Please verify again.';
-      } else if (errorString.includes('Invalid VC signature')) {
-        errorMessage = 'Invalid verification signature. Please verify your identity again.';
-      } else {
-        errorMessage = `Transaction failed: ${errorString}`;
-      }
-      
-      setError(errorMessage);
-      setIsLoading(false);
-      setIsRegistering(false);
-    }
-  }, [isRegistrationError, registrationError]);
-
-  // Refetch NGO data after successful registration
-  useEffect(() => {
-    if (isRegistrationSuccess) {
-      refetchNgo();
-      setIsLoading(false);
-      setIsRegistering(false);
-    }
-  }, [isRegistrationSuccess, refetchNgo]);
 
   return {
     registerNGO,
     approveCUSD,
     isRegistered,
     needsApproval,
-    hasEnoughBalance,
-    balance,
-    isLoading: isLoading || isPending || isApprovalConfirming || isRegistrationConfirming,
+    hasEnoughBalance: hasEnoughBalance === true,
+    balance: balance ? BigInt(balance.toString()) : undefined,
+    isLoading: isLoading || isApproving || isRegistering,
     isApprovalSuccess,
     isRegistrationSuccess,
     error,
     approvalHash,
     registrationHash,
+    address,
+    isConnected,
   };
 }
-

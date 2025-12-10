@@ -25,7 +25,10 @@ export const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks,
   transports: {
-    [celoSepolia.id]: http(),
+    [celoSepolia.id]: http(
+      process.env.NEXT_PUBLIC_CELO_SEPOLIA_RPC_URL || 
+      'https://sepolia-forno.celo.org' // Default Celo Sepolia RPC
+    ),
   },
 });
 

@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Loader2, Shield, AlertCircle, Smartphone, Monitor, Upload, Image as ImageIcon } from 'lucide-react';
-import { useAccount } from 'wagmi';
+// Removed wagmi import - using ethers.js directly via useNgoRegistration hook
 import { useAppKit } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
-import { formatEther } from 'viem';
+import { formatEther, parseUnits } from 'ethers';
 import { countries, SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qrcode';
 import { NGORegistryContract } from '../abi';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
@@ -56,7 +56,6 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const [errorMessage, setErrorMessage] = useState('');
   const [verificationProofData, setVerificationProofData] = useState<any | null>(null);
   
-  const { isConnected, address } = useAccount();
   const { open } = useAppKit();
   const { 
     registerNGO, 
@@ -65,11 +64,14 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     needsApproval,
     hasEnoughBalance,
     balance,
-    isLoading: isRegistering, 
+    isLoading, 
     isApprovalSuccess,
     isRegistrationSuccess,
     approvalHash,
-    error: registrationError 
+    error: registrationError,
+    address,
+    isConnected,
+    stagingMode
   } = useNgoRegistration();
 
   const router = useRouter();
@@ -82,6 +84,27 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
       router.push('/ngo/dashboard');
     }
   }, [isConnected, isRegistered, isOpen, onClose, router]);
+
+  // Redirect to dashboard after successful registration
+  useEffect(() => {
+    if (isRegistrationSuccess && isConnected) {
+      console.log('✅ Registration successful! Redirecting to NGO dashboard...');
+      // Close modal and redirect after a short delay to show success message
+      setTimeout(() => {
+        onClose();
+        router.push('/ngo/dashboard');
+      }, 2000); // 2 second delay to show success message
+    }
+  }, [isRegistrationSuccess, isConnected, onClose, router]);
+
+  // Also redirect if user becomes registered (e.g., from another tab or after registration)
+  useEffect(() => {
+    if (isConnected && isRegistered && isOpen && !isRegistrationSuccess) {
+      console.log('✅ User is registered, redirecting to NGO dashboard');
+      onClose();
+      router.push('/ngo/dashboard');
+    }
+  }, [isConnected, isRegistered, isOpen, isRegistrationSuccess, onClose, router]);
 
   // Initialize Self Protocol app when wallet is connected and on step 2
   useEffect(() => {
@@ -227,18 +250,26 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const handleApproveCUSD = async () => {
     try {
       await approveCUSD();
-      // Don't advance here - wait for isApprovalSuccess in useEffect
+      // Approval success will be handled by useEffect
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to approve cUSD');
     }
   };
   
-  // Log approval success (user must manually click continue)
+  // Auto-advance steps when conditions are met
   useEffect(() => {
-    if (isApprovalSuccess && currentStep === 3) {
-      console.log('✅ Approval confirmed - waiting for user to click continue');
+    // Step 1 → Step 2: Auto-advance when wallet is connected
+    if (currentStep === 1 && isConnected && address) {
+      setCurrentStep(2);
     }
-  }, [isApprovalSuccess, currentStep]);
+    
+    // Step 2 → Step 3: Auto-advance when verification is complete (handled in handleSuccessfulVerification)
+    
+    // Step 3 → Step 4: Auto-advance when approval is complete or already approved
+    if (currentStep === 3 && (!needsApproval || isApprovalSuccess)) {
+      setCurrentStep(4);
+    }
+  }, [currentStep, isConnected, address, needsApproval, isApprovalSuccess]);
 
   // Handle image upload and mock IPFS upload
   const handleImageUpload = async (file: File) => {
@@ -617,8 +648,8 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                     <p className={`text-sm font-medium ${
                       hasEnoughBalance ? 'text-emerald-800' : 'text-red-800'
                     }`}>
-                      {hasEnoughBalance ? '✓' : '⚠'} Your cUSD Balance: {formatEther(balance)} cUSD
-                      {!hasEnoughBalance && (
+                      {hasEnoughBalance === true ? '✓' : '⚠'} Your cUSD Balance: {formatEther(balance)} cUSD
+                      {hasEnoughBalance === false && (
                         <span className="block mt-1 text-xs">
                           You need at least 1 cUSD to register. Please add more cUSD to your wallet.
                         </span>
@@ -630,30 +661,17 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                 <p className="text-sm text-gray-500 mb-8">
                   This fee helps prevent spam and ensures only serious NGOs register.
                 </p>
-                {needsApproval ? (
-                  <div className="space-y-4">
-                    {isApprovalSuccess ? (
-                      <div className="space-y-4">
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                          <p className="text-sm text-emerald-800 font-medium">
-                            ✅ cUSD approval confirmed! You can now proceed to registration.
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleNextStep}
-                          className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
-                        >
-                          Continue to Registration
-                          <ArrowRight className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ) : (
+                
+                <div className="space-y-4">
+                  {needsApproval ? (
+                    <div className="space-y-4">
                       <button
                         onClick={handleApproveCUSD}
-                        disabled={isRegistering || !hasEnoughBalance}
+                        disabled={isLoading || (balance !== undefined && BigInt(balance.toString()) < parseUnits('1', 18))}
                         className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                        title={balance !== undefined && BigInt(balance.toString()) < parseUnits('1', 18) ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : (isLoading ? 'Processing...' : 'Click to approve 1 cUSD')}
                       >
-                        {isRegistering ? (
+                        {isLoading ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             {approvalHash ? 'Confirming...' : 'Approving...'}
@@ -665,24 +683,29 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                           </>
                         )}
                       </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                      <p className="text-sm text-emerald-800">
-                        ✅ cUSD already approved
-                      </p>
+                      {approvalHash && (
+                        <p className="text-sm text-gray-500 text-center">
+                          Transaction: {approvalHash.substring(0, 10)}...
+                        </p>
+                      )}
                     </div>
-                    <button
-                      onClick={handleNextStep}
-                      className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
-                    >
-                      Continue
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <p className="text-sm text-emerald-800 font-medium">
+                          ✅ cUSD approved. You can proceed to registration.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleNextStep}
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
+                      >
+                        Continue to Registration
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={handlePrevStep}
                   className="mt-4 w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
@@ -794,8 +817,52 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </p>
                     </div>
 
+                    {/* Approval Status */}
+                    {needsApproval && !isApprovalSuccess ? (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-yellow-800 mb-1">
+                              Approval Required
+                            </p>
+                            <p className="text-sm text-yellow-700 mb-3">
+                              You need to approve cUSD spending before you can register. Please approve 1 cUSD for the registration fee.
+                            </p>
+                            <button
+                              onClick={handleApproveCUSD}
+                              disabled={isLoading || (hasEnoughBalance === false)}
+                              className="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
+                            >
+                              {isLoading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  {approvalHash ? 'Confirming...' : 'Approving...'}
+                                </>
+                              ) : (
+                                <>
+                                  Approve 1 cUSD
+                                  <ArrowRight className="w-4 h-4" />
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (!needsApproval || isApprovalSuccess) && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                          <p className="text-sm text-green-800">
+                            ✓ cUSD approved. You can proceed to registration.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Balance Warning */}
-                    {balance !== undefined && !hasEnoughBalance && (
+                    {balance !== undefined && hasEnoughBalance === false && (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                         <div className="flex items-start gap-2">
                           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -827,10 +894,11 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </button>
                       <button
                         onClick={handleRegisterNGO}
-                        disabled={isRegistering || !ipfsProfile || isUploading || !hasEnoughBalance}
+                        disabled={isLoading || !ipfsProfile || isUploading}
                         className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        title={!ipfsProfile ? 'Please upload an image first' : (isLoading ? 'Processing...' : (isUploading ? 'Uploading image...' : 'Click to register'))}
                       >
-                        {isRegistering ? (
+                        {isLoading ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             Registering...
