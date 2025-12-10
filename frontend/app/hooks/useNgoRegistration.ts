@@ -193,6 +193,14 @@ export function useNgoRegistration() {
 
     const fetchStagingMode = async () => {
       try {
+        // Check if we're on the correct network
+        const network = await provider.getNetwork();
+        const expectedChainId = 11155711n; // Celo Sepolia
+        if (network.chainId !== expectedChainId) {
+          setStagingMode(null);
+          return;
+        }
+
         const contract = new Contract(
           NGORegistryContract.address,
           NGORegistryContract.abi,
@@ -201,8 +209,11 @@ export function useNgoRegistration() {
         const mode = await contract.stagingMode();
         setStagingMode(mode);
         console.log('📊 Staging mode status:', mode ? '✅ ENABLED' : '❌ DISABLED');
-      } catch (error) {
-        console.error('Error fetching staging mode:', error);
+      } catch (error: any) {
+        // Only log non-RPC errors to avoid console spam
+        if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
+          console.error('Error fetching staging mode:', error);
+        }
         setStagingMode(null);
       }
     };
