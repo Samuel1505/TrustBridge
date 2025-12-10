@@ -124,12 +124,11 @@ export function useNgoRegistration() {
           provider
         );
         const data = await contract.ngoByWallet(address);
-        // Check if the data indicates registration (isActive should be true)
+        // Always store the data if we get it, regardless of isActive status
+        setNgoData(data);
         if (data && data.isActive === true) {
-          setNgoData(data);
           console.log('✅ User is registered as NGO');
         } else {
-          setNgoData(null);
           console.log('ℹ️ User is not registered as NGO');
         }
       } catch (error: any) {
@@ -137,13 +136,14 @@ export function useNgoRegistration() {
         if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
           console.error('Error fetching NGO data:', error);
         }
-        // Don't set to null on RPC errors - keep previous state to avoid flickering
-        // Only set to null if we're sure the user is not registered
-        if (error?.code === 'CALL_EXCEPTION') {
-          // This might be a revert, which could mean not registered
-          // But we'll keep the previous state to be safe
-          console.log('⚠️ Could not fetch NGO data, keeping previous state');
+        // Don't reset ngoData on RPC errors - preserve the registration state
+        // This prevents the "Register as NGO" button from flickering when RPC calls fail
+        if (error?.code === 'CALL_EXCEPTION' || error?.code === 'NETWORK_ERROR') {
+          // Keep previous state - don't reset to null on RPC errors
+          // This is important: if user is registered but RPC fails, we don't want to show "Register" button
+          console.log('⚠️ RPC error fetching NGO data, preserving previous state');
         } else {
+          // Only reset on other types of errors (not RPC-related)
           setNgoData(null);
         }
       }
