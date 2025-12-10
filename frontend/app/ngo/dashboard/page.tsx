@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAccount, useReadContract } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { useAppKit } from '@reown/appkit/react';
 import { 
@@ -18,36 +17,64 @@ import {
   ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
+import { useNgoRegistration } from '../../hooks/useNgoRegistration';
+import { Contract, BrowserProvider } from 'ethers';
 import { NGORegistryContract } from '../../abi';
 
 export default function NGODashboardPage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isRegistered } = useNgoRegistration();
   const { open } = useAppKit();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [ngo, setNgo] = useState<any>(null);
+  const [isLoadingNgo, setIsLoadingNgo] = useState(true);
 
-  // Fetch NGO data from contract
-  const { data: ngoData, isLoading: isLoadingNgo } = useReadContract({
-    address: NGORegistryContract.address as `0x${string}`,
-    abi: NGORegistryContract.abi,
-    functionName: 'ngoByWallet',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
+  // Fetch NGO data from contract using ethers.js
+  useEffect(() => {
+    const fetchNgoData = async () => {
+      if (!address || !isConnected) {
+        setIsLoadingNgo(false);
+        return;
+      }
 
-  const ngo = ngoData as any;
-  const isRegistered = ngo?.isActive === true;
+      try {
+        // Get provider from window.ethereum
+        if (typeof window !== 'undefined' && window.ethereum) {
+          const provider = new BrowserProvider(window.ethereum);
+          const contract = new Contract(
+            NGORegistryContract.address,
+            NGORegistryContract.abi,
+            provider
+          );
+          const ngoData = await contract.ngoByWallet(address);
+          setNgo(ngoData);
+        }
+      } catch (error) {
+        console.error('Error fetching NGO data:', error);
+        setNgo(null);
+      } finally {
+        setIsLoadingNgo(false);
+      }
+    };
+
+    fetchNgoData();
+  }, [address, isConnected]);
 
   useEffect(() => {
     if (!isConnected) {
+      // Open wallet connection modal
       open();
-    } else if (isConnected && !isLoadingNgo && !isRegistered) {
-      // If not registered, redirect to home
-      router.push('/');
     } else if (isConnected && !isLoadingNgo) {
-      setIsLoading(false);
+      if (!isRegistered) {
+        // If not registered, redirect to home after a short delay
+        console.log('User is not registered, redirecting to home');
+        setTimeout(() => {
+          router.push('/');
+        }, 1000);
+      } else {
+        // User is registered, show dashboard
+        setIsLoading(false);
+      }
     }
   }, [isConnected, isLoadingNgo, isRegistered, router, open]);
 
@@ -107,7 +134,16 @@ export default function NGODashboardPage() {
                   </p>
                 </div>
               )}
-              <appkit-button />
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.ethereum) {
+                    window.ethereum.request({ method: 'eth_requestAccounts' });
+                  }
+                }}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
+              </button>
             </div>
           </div>
         </div>
