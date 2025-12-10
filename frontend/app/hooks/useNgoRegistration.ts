@@ -86,6 +86,11 @@ export function useNgoRegistration() {
             setAllowance(null);
             setBalance(null);
           });
+
+          // Listen for chain changes
+          window.ethereum.on('chainChanged', () => {
+            window.location.reload();
+          });
         } catch (error) {
           console.error('Error initializing provider:', error);
         }
