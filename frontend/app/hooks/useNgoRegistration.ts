@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
 import { parseEther, erc20Abi, decodeErrorResult, simulateContract } from 'viem';
+import { BrowserProvider } from 'ethers';
 import { NGORegistryContract } from '../abi';
 import { processSelfProtocolResult } from '../utils/selfProtocol';
+import { decodeContractError, getErrorMessage } from '../utils/errorDecoder';
 
 // cUSD address on Celo Sepolia
 const CUSD_ADDRESS = '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b' as `0x${string}`;
