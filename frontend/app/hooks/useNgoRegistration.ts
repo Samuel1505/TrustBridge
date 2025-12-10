@@ -303,59 +303,74 @@ export function useNgoRegistration() {
       let errorMessage = 'Transaction failed';
       
       // Try to decode the error if it has data
-      try {
-        const errorData = (registrationError as any)?.data || (registrationError as any)?.cause?.data;
-        if (errorData) {
-          console.log('Attempting to decode error data:', errorData);
-          try {
-            const decoded = decodeErrorResult({
-              abi: NGORegistryContract.abi,
-              data: errorData,
-            });
-            console.log('Decoded error:', decoded);
-            errorMessage = `Contract error: ${decoded.errorName}`;
-            
-            // Map decoded error names to user-friendly messages
-            if (decoded.errorName === 'ERC20InsufficientAllowance') {
-              errorMessage = 'Insufficient cUSD allowance. Please approve cUSD spending first.';
-            } else if (decoded.errorName === 'ERC20InsufficientBalance') {
-              errorMessage = 'Insufficient cUSD balance. You need at least 1 cUSD to register.';
-            } else if (decoded.errorName === 'ECDSAInvalidSignature') {
-              errorMessage = 'Invalid VC signature. This should not happen in staging mode. Please check contract staging mode setting.';
+      const decodeError = async () => {
+        try {
+          const errorData = (registrationError as any)?.data || (registrationError as any)?.cause?.data;
+          if (errorData) {
+            console.log('Attempting to decode error data with viem:', errorData);
+            try {
+              const decoded = decodeErrorResult({
+                abi: NGORegistryContract.abi,
+                data: errorData,
+              });
+              console.log('Decoded error (viem):', decoded);
+              errorMessage = getErrorMessage(decoded.errorName);
+              return errorMessage;
+            } catch (viemError) {
+              console.log('Viem decode failed, trying ethers.js fallback:', viemError);
+              
+              // Fallback to ethers.js for better error decoding
+              if (typeof window !== 'undefined' && window.ethereum) {
+                try {
+                  const provider = new BrowserProvider(window.ethereum);
+                  const decoded = await decodeContractError(
+                    registrationError,
+                    NGORegistryContract.address,
+                    provider
+                  );
+                  if (decoded) {
+                    console.log('Decoded error (ethers):', decoded);
+                    errorMessage = getErrorMessage(decoded.errorName);
+                    return errorMessage;
+                  }
+                } catch (ethersError) {
+                  console.log('Ethers decode also failed:', ethersError);
+                }
+              }
             }
-          } catch (decodeError) {
-            console.log('Could not decode error, trying string matching:', decodeError);
           }
+        } catch (e) {
+          console.log('Error decoding failed:', e);
         }
-      } catch (e) {
-        console.log('Error decoding failed:', e);
-      }
+        
+        // Parse error message to provide helpful feedback
+        const errorString = registrationError.message || String(registrationError);
+        if (errorString.includes('insufficient') || errorString.includes('balance')) {
+          return 'Insufficient cUSD balance. You need at least 1 cUSD to register.';
+        } else if (errorString.includes('allowance') || errorString.includes('approve') || errorString.includes('ERC20InsufficientAllowance')) {
+          return 'Insufficient cUSD allowance. Please approve cUSD spending first.';
+        } else if (errorString.includes('Registration fee payment failed')) {
+          return 'Registration fee payment failed. Please ensure you have at least 1 cUSD and have approved the spending.';
+        } else if (errorString.includes('Already registered')) {
+          return 'You are already registered as an NGO.';
+        } else if (errorString.includes('DID already used')) {
+          return 'This identity has already been used to register an NGO.';
+        } else if (errorString.includes('VC already used')) {
+          return 'This verification credential has already been used.';
+        } else if (errorString.includes('VC expired')) {
+          return 'Your verification credential has expired. Please verify again.';
+        } else if (errorString.includes('Invalid VC signature') || errorString.includes('ECDSAInvalidSignature')) {
+          return 'Invalid verification signature. This should not happen in staging mode. Please check contract staging mode setting.';
+        } else {
+          return `Transaction failed: ${errorString}. Check console for details.`;
+        }
+      };
       
-      // Parse error message to provide helpful feedback
-      const errorString = registrationError.message || String(registrationError);
-      if (errorString.includes('insufficient') || errorString.includes('balance')) {
-        errorMessage = 'Insufficient cUSD balance. You need at least 1 cUSD to register.';
-      } else if (errorString.includes('allowance') || errorString.includes('approve') || errorString.includes('ERC20InsufficientAllowance')) {
-        errorMessage = 'Insufficient cUSD allowance. Please approve cUSD spending first.';
-      } else if (errorString.includes('Registration fee payment failed')) {
-        errorMessage = 'Registration fee payment failed. Please ensure you have at least 1 cUSD and have approved the spending.';
-      } else if (errorString.includes('Already registered')) {
-        errorMessage = 'You are already registered as an NGO.';
-      } else if (errorString.includes('DID already used')) {
-        errorMessage = 'This identity has already been used to register an NGO.';
-      } else if (errorString.includes('VC already used')) {
-        errorMessage = 'This verification credential has already been used.';
-      } else if (errorString.includes('VC expired')) {
-        errorMessage = 'Your verification credential has expired. Please verify again.';
-      } else if (errorString.includes('Invalid VC signature') || errorString.includes('ECDSAInvalidSignature')) {
-        errorMessage = 'Invalid verification signature. This should not happen in staging mode. Please check contract staging mode setting.';
-      } else if (!errorMessage || errorMessage === 'Transaction failed') {
-        errorMessage = `Transaction failed: ${errorString}. Check console for details.`;
-      }
-      
-      setError(errorMessage);
-      setIsLoading(false);
-      setIsRegistering(false);
+      decodeError().then((msg) => {
+        setError(msg || errorMessage);
+        setIsLoading(false);
+        setIsRegistering(false);
+      });
     }
   }, [isRegistrationError, registrationError]);
 
