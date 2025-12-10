@@ -624,8 +624,8 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                     <p className={`text-sm font-medium ${
                       hasEnoughBalance ? 'text-emerald-800' : 'text-red-800'
                     }`}>
-                      {hasEnoughBalance ? '✓' : '⚠'} Your cUSD Balance: {formatEther(balance)} cUSD
-                      {!hasEnoughBalance && (
+                      {hasEnoughBalance === true ? '✓' : '⚠'} Your cUSD Balance: {formatEther(balance)} cUSD
+                      {hasEnoughBalance === false && (
                         <span className="block mt-1 text-xs">
                           You need at least 1 cUSD to register. Please add more cUSD to your wallet.
                         </span>
@@ -659,7 +659,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                         onClick={handleApproveCUSD}
                         disabled={isLoading || (hasEnoughBalance === false)}
                         className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
-                        title={!hasEnoughBalance ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
+                        title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
                       >
                         {isLoading ? (
                           <>
@@ -838,7 +838,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                     )}
 
                     {/* Balance Warning */}
-                    {balance !== undefined && !hasEnoughBalance && (
+                    {balance !== undefined && hasEnoughBalance === false && (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                         <div className="flex items-start gap-2">
                           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
