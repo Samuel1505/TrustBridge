@@ -502,6 +502,13 @@ export function useNgoRegistration() {
     if (isRegistrationSuccess && address && provider) {
       const refetchNgo = async () => {
         try {
+          const network = await provider.getNetwork();
+          const expectedChainId = 11155711n; // Celo Sepolia
+          if (network.chainId !== expectedChainId) {
+            console.warn('Wrong network for refetch');
+            return;
+          }
+
           const contract = new Contract(
             NGORegistryContract.address,
             NGORegistryContract.abi,
@@ -509,11 +516,16 @@ export function useNgoRegistration() {
           );
           const data = await contract.ngoByWallet(address);
           setNgoData(data);
-        } catch (error) {
+          console.log('✅ Refetched NGO data after registration:', data?.isActive ? 'Registered' : 'Not registered');
+        } catch (error: any) {
           console.error('Error refetching NGO data:', error);
+          // Don't reset on error - keep the success state
         }
       };
-      refetchNgo();
+      // Add a small delay to ensure the transaction is fully processed
+      setTimeout(() => {
+        refetchNgo();
+      }, 2000);
     }
   }, [isRegistrationSuccess, address, provider]);
 
