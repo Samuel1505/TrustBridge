@@ -657,10 +657,10 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                     ) : (
                       <button
                         onClick={handleApproveCUSD}
-                        disabled={isRegistering || !hasEnoughBalance}
+                        disabled={isLoading || !hasEnoughBalance}
                         className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
                       >
-                        {isRegistering ? (
+                        {isLoading ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             {approvalHash ? 'Confirming...' : 'Approving...'}
