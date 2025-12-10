@@ -6,7 +6,7 @@ import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Lo
 // Removed wagmi import - using ethers.js directly via useNgoRegistration hook
 import { useAppKit } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
-import { formatEther } from 'ethers';
+import { formatEther, parseUnits } from 'ethers';
 import { countries, SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qrcode';
 import { NGORegistryContract } from '../abi';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
