@@ -117,29 +117,45 @@ export function useNgoRegistration() {
     checkRegistration();
   }, [address, provider]);
 
-  // Check allowance
+  // Check allowance - refresh periodically and after approval
   useEffect(() => {
     const checkAllowance = async () => {
-      if (!address || !provider) return;
+      if (!address || !provider) {
+        setAllowance(null);
+        return;
+      }
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11155711n) return;
+        if (network.chainId !== 11155711n) {
+          setAllowance(null);
+          return;
+        }
 
         const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
         const allowanceValue = await cUSDContract.allowance(address, NGORegistryContract.address);
+        console.log('🔍 Current allowance:', allowanceValue.toString(), 'Required:', REGISTRATION_FEE.toString());
         setAllowance(allowanceValue);
         
         if (allowanceValue >= REGISTRATION_FEE) {
           setIsApprovalSuccess(true);
+          console.log('✅ Allowance is sufficient');
+        } else {
+          setIsApprovalSuccess(false);
+          console.log('⚠️ Allowance is insufficient');
         }
       } catch (error) {
         console.error('Error checking allowance:', error);
         setAllowance(null);
+        setIsApprovalSuccess(false);
       }
     };
 
     checkAllowance();
+    
+    // Refresh allowance every 5 seconds to catch updates
+    const interval = setInterval(checkAllowance, 5000);
+    return () => clearInterval(interval);
   }, [address, provider]);
 
   // Check balance
@@ -181,12 +197,18 @@ export function useNgoRegistration() {
       const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, signer);
       const tx = await cUSDContract.approve(NGORegistryContract.address, REGISTRATION_FEE);
       setApprovalHash(tx.hash);
-      await tx.wait();
-      setIsApprovalSuccess(true);
+      const receipt = await tx.wait();
+      console.log('✅ Approval transaction confirmed:', receipt);
       
-      // Refresh allowance
-      const allowanceValue = await cUSDContract.allowance(address, NGORegistryContract.address);
+      // Refresh allowance immediately after approval
+      const cUSDContractRead = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
+      const allowanceValue = await cUSDContractRead.allowance(address, NGORegistryContract.address);
       setAllowance(allowanceValue);
+      console.log('✅ Refreshed allowance after approval:', allowanceValue.toString());
+      
+      if (allowanceValue >= REGISTRATION_FEE) {
+        setIsApprovalSuccess(true);
+      }
     } catch (err: any) {
       console.error('Approval error:', err);
       const decodedError = await decodeContractError(err, NGORegistryContract.address, provider);

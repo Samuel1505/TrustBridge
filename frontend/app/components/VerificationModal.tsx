@@ -664,24 +664,31 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                 
                 <div className="space-y-4">
                   {needsApproval ? (
-                    <button
-                      onClick={handleApproveCUSD}
-                      disabled={isLoading || hasEnoughBalance === false}
-                      className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
-                      title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          {approvalHash ? 'Confirming...' : 'Approving...'}
-                        </>
-                      ) : (
-                        <>
-                          Approve 1 cUSD
-                          <ArrowRight className="w-5 h-5" />
-                        </>
+                    <div className="space-y-4">
+                      <button
+                        onClick={handleApproveCUSD}
+                        disabled={isLoading || hasEnoughBalance === false}
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                        title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            {approvalHash ? 'Confirming...' : 'Approving...'}
+                          </>
+                        ) : (
+                          <>
+                            Approve 1 cUSD
+                            <ArrowRight className="w-5 h-5" />
+                          </>
+                        )}
+                      </button>
+                      {approvalHash && (
+                        <p className="text-sm text-gray-500 text-center">
+                          Transaction: {approvalHash.substring(0, 10)}...
+                        </p>
                       )}
-                    </button>
+                    </div>
                   ) : (
                     <div className="space-y-4">
                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
