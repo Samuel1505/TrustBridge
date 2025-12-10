@@ -226,16 +226,7 @@ export function useNgoRegistration() {
                 data: errorData,
               });
               console.log('Decoded simulation error:', decoded);
-              errorMsg = `Transaction will fail: ${decoded.errorName}`;
-              
-              // Map to user-friendly messages
-              if (decoded.errorName === 'ERC20InsufficientAllowance') {
-                errorMsg = 'Insufficient cUSD allowance. Please approve cUSD spending first.';
-              } else if (decoded.errorName === 'ERC20InsufficientBalance') {
-                errorMsg = 'Insufficient cUSD balance. You need at least 1 cUSD to register.';
-              } else if (decoded.errorName === 'ECDSAInvalidSignature') {
-                errorMsg = 'Invalid VC signature. This should not happen in staging mode.';
-              }
+              errorMsg = getErrorMessage(decoded.errorName);
             } else if (simError.message) {
               errorMsg = simError.message;
             }
