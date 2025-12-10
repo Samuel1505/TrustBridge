@@ -241,7 +241,9 @@ export function useNgoRegistration() {
   }, [provider]);
 
   const isRegistered = ngoData && ngoData.isActive === true;
-  const needsApproval = allowance === null || allowance < REGISTRATION_FEE;
+  // needsApproval: true if allowance is null (loading) OR allowance is less than fee
+  // false if allowance exists and is >= fee
+  const needsApproval = allowance === null ? true : allowance < REGISTRATION_FEE;
   const hasEnoughBalance = balance !== null && balance !== undefined ? balance >= REGISTRATION_FEE : undefined;
 
   /**

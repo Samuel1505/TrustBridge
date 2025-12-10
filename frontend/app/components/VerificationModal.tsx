@@ -663,60 +663,46 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                 <p className="text-sm text-gray-500 mb-8">
                   This fee helps prevent spam and ensures only serious NGOs register.
                 </p>
-                    {needsApproval && !isApprovalSuccess ? (
-                  <div className="space-y-4">
-                    {isApprovalSuccess ? (
-                      <div className="space-y-4">
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                          <p className="text-sm text-emerald-800 font-medium">
-                            ✅ cUSD approval confirmed! You can now proceed to registration.
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleNextStep}
-                          className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
-                        >
-                          Continue to Registration
-                          <ArrowRight className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleApproveCUSD}
-                        disabled={isLoading || (hasEnoughBalance === false)}
-                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
-                        title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            {approvalHash ? 'Confirming...' : 'Approving...'}
-                          </>
-                        ) : (
-                          <>
-                            Approve 1 cUSD
-                            <ArrowRight className="w-5 h-5" />
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                      <p className="text-sm text-emerald-800">
-                        ✅ cUSD already approved
-                      </p>
-                    </div>
+                
+                <div className="space-y-4">
+                  {/* Show approval button if approval is needed */}
+                  {needsApproval && !isApprovalSuccess ? (
                     <button
-                      onClick={handleNextStep}
-                      className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
+                      onClick={handleApproveCUSD}
+                      disabled={isLoading || hasEnoughBalance === false}
+                      className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                      title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
                     >
-                      Continue
-                      <ArrowRight className="w-5 h-5" />
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {approvalHash ? 'Confirming...' : 'Approving...'}
+                        </>
+                      ) : (
+                        <>
+                          Approve 1 cUSD
+                          <ArrowRight className="w-5 h-5" />
+                        </>
+                      )}
                     </button>
-                  </div>
-                )}
+                  ) : (
+                    /* Show success message and continue button if already approved or approval succeeded */
+                    <>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <p className="text-sm text-emerald-800 font-medium">
+                          ✅ cUSD {isApprovalSuccess ? 'approval confirmed' : 'already approved'}! You can now proceed to registration.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleNextStep}
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
+                      >
+                        Continue to Registration
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                </div>
                 <button
                   onClick={handlePrevStep}
                   className="mt-4 w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
