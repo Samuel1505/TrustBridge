@@ -65,7 +65,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     needsApproval,
     hasEnoughBalance,
     balance,
-    isLoading: isRegistering, 
+    isLoading, 
     isApprovalSuccess,
     isRegistrationSuccess,
     approvalHash,
