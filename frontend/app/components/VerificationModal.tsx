@@ -683,10 +683,19 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       )}
                     </button>
                   ) : (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                      <p className="text-sm text-emerald-800 font-medium">
-                        ✅ cUSD approved. Proceeding to registration...
-                      </p>
+                    <div className="space-y-4">
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <p className="text-sm text-emerald-800 font-medium">
+                          ✅ cUSD approved. You can proceed to registration.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleNextStep}
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
+                      >
+                        Continue to Registration
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
                     </div>
                   )}
                 </div>
