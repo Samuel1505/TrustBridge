@@ -256,22 +256,20 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
   
-  // Handle approval success - auto-advance to registration step
+  // Auto-advance steps when conditions are met
   useEffect(() => {
-    if (isApprovalSuccess && currentStep === 3) {
-      console.log('✅ Approval successful, advancing to registration step');
+    // Step 1 → Step 2: Auto-advance when wallet is connected
+    if (currentStep === 1 && isConnected && address) {
+      setCurrentStep(2);
+    }
+    
+    // Step 2 → Step 3: Auto-advance when verification is complete (handled in handleSuccessfulVerification)
+    
+    // Step 3 → Step 4: Auto-advance when approval is complete or already approved
+    if (currentStep === 3 && (!needsApproval || isApprovalSuccess)) {
       setCurrentStep(4);
     }
-  }, [isApprovalSuccess, currentStep]);
-  
-  // Auto-advance to registration step if already approved
-  useEffect(() => {
-    if (currentStep === 3 && !needsApproval && !isApprovalSuccess) {
-      // User already has approval, skip to registration
-      console.log('✅ Already approved, advancing to registration step');
-      setCurrentStep(4);
-    }
-  }, [currentStep, needsApproval, isApprovalSuccess]);
+  }, [currentStep, isConnected, address, needsApproval, isApprovalSuccess]);
 
   // Handle image upload and mock IPFS upload
   const handleImageUpload = async (file: File) => {
@@ -665,8 +663,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                 </p>
                 
                 <div className="space-y-4">
-                  {/* Show approval button if approval is needed */}
-                  {needsApproval && !isApprovalSuccess ? (
+                  {needsApproval ? (
                     <button
                       onClick={handleApproveCUSD}
                       disabled={isLoading || hasEnoughBalance === false}
@@ -686,21 +683,11 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       )}
                     </button>
                   ) : (
-                    /* Show success message and continue button if already approved or approval succeeded */
-                    <>
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                        <p className="text-sm text-emerald-800 font-medium">
-                          ✅ cUSD {isApprovalSuccess ? 'approval confirmed' : 'already approved'}! You can now proceed to registration.
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleNextStep}
-                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto"
-                      >
-                        Continue to Registration
-                        <ArrowRight className="w-5 h-5" />
-                      </button>
-                    </>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                      <p className="text-sm text-emerald-800 font-medium">
+                        ✅ cUSD approved. Proceeding to registration...
+                      </p>
+                    </div>
                   )}
                 </div>
                 <button
