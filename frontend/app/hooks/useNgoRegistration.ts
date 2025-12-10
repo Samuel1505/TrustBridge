@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther, erc20Abi, decodeErrorResult } from 'viem';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
+import { parseEther, erc20Abi, decodeErrorResult, simulateContract } from 'viem';
 import { NGORegistryContract } from '../abi';
 import { processSelfProtocolResult } from '../utils/selfProtocol';
 
