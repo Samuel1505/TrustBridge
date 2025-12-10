@@ -657,8 +657,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                     ) : (
                       <button
                         onClick={handleApproveCUSD}
-                        disabled={isLoading || !hasEnoughBalance}
+                        disabled={isLoading || (hasEnoughBalance === false)}
                         className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                        title={!hasEnoughBalance ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
                       >
                         {isLoading ? (
                           <>
@@ -815,10 +816,11 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                             </p>
                             <button
                               onClick={handleApproveCUSD}
-                              disabled={isRegistering || !hasEnoughBalance}
+                              disabled={isLoading || (hasEnoughBalance === false)}
                               className="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
                             >
-                              {isRegistering ? (
+                              {isLoading ? (
                                 <>
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                   {approvalHash ? 'Confirming...' : 'Approving...'}
@@ -868,7 +870,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </button>
                       <button
                         onClick={handleRegisterNGO}
-                        disabled={isRegistering || !ipfsProfile || isUploading || !hasEnoughBalance || needsApproval}
+                        disabled={isLoading || !ipfsProfile || isUploading || hasEnoughBalance === false || needsApproval}
                         className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isRegistering ? (

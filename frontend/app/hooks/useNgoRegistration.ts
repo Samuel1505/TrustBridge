@@ -95,7 +95,8 @@ export function useNgoRegistration() {
     },
   });
 
-  const hasEnoughBalance = balance ? balance >= REGISTRATION_FEE : false;
+  // hasEnoughBalance is true if balance exists and is >= fee, false if balance exists and is < fee, undefined if still loading
+  const hasEnoughBalance = balance !== undefined ? balance >= REGISTRATION_FEE : undefined;
 
   /**
    * Approve cUSD for registration fee
