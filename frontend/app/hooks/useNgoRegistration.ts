@@ -135,17 +135,30 @@ export function useNgoRegistration() {
         
         // Use the simpler isVerified function instead of fetching full struct
         const isVerified = await contract.isVerified(address);
+        console.log('🔍 isVerified result:', isVerified, 'for address:', address);
         
         // Also fetch full data if verified (for dashboard display)
         if (isVerified) {
           const data = await contract.ngoByWallet(address);
+          console.log('📊 Full NGO data:', data);
           setNgoData(data);
           localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'true');
           console.log('✅ User is verified as NGO (cached)');
         } else {
-          setNgoData(null);
-          localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'false');
-          console.log('ℹ️ User is not verified as NGO');
+          // Even if isVerified is false, check ngoByWallet to see if there's data
+          // (might be registered but expired)
+          const data = await contract.ngoByWallet(address);
+          console.log('📊 NGO data (not verified):', data);
+          if (data && data.isActive === true) {
+            // User is registered but VC might be expired
+            setNgoData(data);
+            localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'true');
+            console.log('⚠️ User is registered but VC might be expired');
+          } else {
+            setNgoData(null);
+            localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'false');
+            console.log('ℹ️ User is not registered as NGO');
+          }
         }
         
         setIsCheckingRegistration(false);
