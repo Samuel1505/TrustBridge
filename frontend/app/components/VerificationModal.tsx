@@ -233,10 +233,17 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
   
-  // Log approval success (user must manually click continue)
+  // Handle approval success
   useEffect(() => {
-    if (isApprovalSuccess && currentStep === 3) {
-      console.log('✅ Approval confirmed - waiting for user to click continue');
+    if (isApprovalSuccess) {
+      if (currentStep === 4) {
+        // On registration step - approval is complete, user can now register
+        console.log('✅ Approval confirmed - user can now register');
+        // The needsApproval will update automatically via the hook
+      } else if (currentStep === 3) {
+        // On approval step - wait for user to click continue
+        console.log('✅ Approval confirmed - waiting for user to click continue');
+      }
     }
   }, [isApprovalSuccess, currentStep]);
 
