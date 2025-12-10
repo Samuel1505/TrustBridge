@@ -97,6 +97,15 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   }, [isRegistrationSuccess, isConnected, onClose, router]);
 
+  // Also redirect if user becomes registered (e.g., from another tab or after registration)
+  useEffect(() => {
+    if (isConnected && isRegistered && isOpen && !isRegistrationSuccess) {
+      console.log('✅ User is registered, redirecting to NGO dashboard');
+      onClose();
+      router.push('/ngo/dashboard');
+    }
+  }, [isConnected, isRegistered, isOpen, isRegistrationSuccess, onClose, router]);
+
   // Initialize Self Protocol app when wallet is connected and on step 2
   useEffect(() => {
     if (!isOpen || !address || currentStep !== 2) return;
