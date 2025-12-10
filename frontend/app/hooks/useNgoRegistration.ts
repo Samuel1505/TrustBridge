@@ -46,6 +46,7 @@ export function useNgoRegistration() {
   const [isRegistrationSuccess, setIsRegistrationSuccess] = useState(false);
   const [isRegistrationError, setIsRegistrationError] = useState(false);
   const [registrationError, setRegistrationError] = useState<any>(null);
+  const [stagingMode, setStagingMode] = useState<boolean | null>(null);
 
   // Initialize provider and get wallet address
   useEffect(() => {

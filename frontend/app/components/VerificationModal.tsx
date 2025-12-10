@@ -70,7 +70,8 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     approvalHash,
     error: registrationError,
     address,
-    isConnected
+    isConnected,
+    stagingMode
   } = useNgoRegistration();
 
   const router = useRouter();
