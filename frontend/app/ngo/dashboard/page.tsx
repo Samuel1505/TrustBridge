@@ -41,6 +41,17 @@ export default function NGODashboardPage() {
         // Get provider from window.ethereum
         if (typeof window !== 'undefined' && window.ethereum) {
           const provider = new BrowserProvider(window.ethereum);
+          
+          // Check if we're on the correct network
+          const network = await provider.getNetwork();
+          const expectedChainId = 11155711n; // Celo Sepolia
+          if (network.chainId !== expectedChainId) {
+            console.warn(`Wrong network. Expected ${expectedChainId}, got ${network.chainId}`);
+            setNgo(null);
+            setIsLoadingNgo(false);
+            return;
+          }
+
           const contract = new Contract(
             NGORegistryContract.address,
             NGORegistryContract.abi,
@@ -49,8 +60,11 @@ export default function NGODashboardPage() {
           const ngoData = await contract.ngoByWallet(address);
           setNgo(ngoData);
         }
-      } catch (error) {
-        console.error('Error fetching NGO data:', error);
+      } catch (error: any) {
+        // Only log non-RPC errors to avoid console spam
+        if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
+          console.error('Error fetching NGO data:', error);
+        }
         setNgo(null);
       } finally {
         setIsLoadingNgo(false);

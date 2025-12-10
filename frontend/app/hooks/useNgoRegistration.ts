@@ -101,6 +101,15 @@ export function useNgoRegistration() {
       if (!address || !provider) return;
 
       try {
+        // Check if we're on the correct network
+        const network = await provider.getNetwork();
+        const expectedChainId = 11155711n; // Celo Sepolia
+        if (network.chainId !== expectedChainId) {
+          console.warn(`Wrong network. Expected ${expectedChainId}, got ${network.chainId}`);
+          setNgoData(null);
+          return;
+        }
+
         const contract = new Contract(
           NGORegistryContract.address,
           NGORegistryContract.abi,
@@ -108,8 +117,11 @@ export function useNgoRegistration() {
         );
         const data = await contract.ngoByWallet(address);
         setNgoData(data);
-      } catch (error) {
-        console.error('Error fetching NGO data:', error);
+      } catch (error: any) {
+        // Only log non-RPC errors to avoid console spam
+        if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
+          console.error('Error fetching NGO data:', error);
+        }
         setNgoData(null);
       }
     };
@@ -123,11 +135,22 @@ export function useNgoRegistration() {
       if (!address || !provider) return;
 
       try {
+        // Check if we're on the correct network
+        const network = await provider.getNetwork();
+        const expectedChainId = 11155711n; // Celo Sepolia
+        if (network.chainId !== expectedChainId) {
+          setAllowance(null);
+          return;
+        }
+
         const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
         const allowanceValue = await cUSDContract.allowance(address, NGORegistryContract.address);
         setAllowance(allowanceValue);
-      } catch (error) {
-        console.error('Error fetching allowance:', error);
+      } catch (error: any) {
+        // Only log non-RPC errors to avoid console spam
+        if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
+          console.error('Error fetching allowance:', error);
+        }
         setAllowance(null);
       }
     };
@@ -141,11 +164,22 @@ export function useNgoRegistration() {
       if (!address || !provider) return;
 
       try {
+        // Check if we're on the correct network
+        const network = await provider.getNetwork();
+        const expectedChainId = 11155711n; // Celo Sepolia
+        if (network.chainId !== expectedChainId) {
+          setBalance(null);
+          return;
+        }
+
         const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
         const balanceValue = await cUSDContract.balanceOf(address);
         setBalance(balanceValue);
-      } catch (error) {
-        console.error('Error fetching balance:', error);
+      } catch (error: any) {
+        // Only log non-RPC errors to avoid console spam
+        if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
+          console.error('Error fetching balance:', error);
+        }
         setBalance(null);
       }
     };
