@@ -15,7 +15,7 @@ async function main() {
   console.log(`\n🔧 Enabling staging mode on ${networkName}...\n`);
 
   // Get contract address from environment or use deployed address
-  const contractAddress = process.env.NGOREGISTRY_ADDRESS || "0x8AE49C5d7c0718467Eae6492BE15222EA67a589A";
+  const contractAddress = process.env.NGOREGISTRY_ADDRESS || "0x4D47d268F5BdBd8926efa86C5205185550b9178d";
 
   console.log(`📋 Contract Address: ${contractAddress}`);
   console.log(`📋 Network: ${networkName}\n`);
