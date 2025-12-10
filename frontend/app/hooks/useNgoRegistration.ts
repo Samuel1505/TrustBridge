@@ -240,19 +240,20 @@ export function useNgoRegistration() {
       );
 
       // Simulate the contract call first to get the actual revert reason
-      try {
-        console.log('🔍 Simulating contract call to check for errors...');
-        await contract.registerNGO.staticCall(
-          processedData.did,
-          processedData.vcProofHash,
-          processedData.vcSignature,
-          processedData.age,
-          processedData.country,
-          ipfsProfile,
-          processedData.expiryDate,
-        );
-        console.log('✅ Simulation passed - transaction should succeed');
-      } catch (simError: any) {
+      // Note: In ethers v6, use staticCall, but we'll skip simulation for now and rely on transaction errors
+      // try {
+      //   console.log('🔍 Simulating contract call to check for errors...');
+      //   await contract.registerNGO.staticCall(
+      //     processedData.did,
+      //     processedData.vcProofHash,
+      //     processedData.vcSignature,
+      //     processedData.age,
+      //     processedData.country,
+      //     ipfsProfile,
+      //     processedData.expiryDate,
+      //   );
+      //   console.log('✅ Simulation passed - transaction should succeed');
+      // } catch (simError: any) {
         console.error('❌ Simulation failed:', simError);
         // Try to decode the error
         let errorMsg = 'Transaction will fail';
