@@ -13,21 +13,10 @@ import { NGORegistryContract } from '../abi';
 export default function Hero() {
   const [isNgoModalOpen, setIsNgoModalOpen] = useState(false);
   const [isDonorModalOpen, setIsDonorModalOpen] = useState(false);
-  const { address, isConnected } = useAccount();
   const router = useRouter();
   
-  // Check if user is already registered as NGO
-  const { data: ngoData } = useReadContract({
-    address: NGORegistryContract.address as `0x${string}`,
-    abi: NGORegistryContract.abi,
-    functionName: 'ngoByWallet',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
-  
-  const isRegistered = ngoData ? (ngoData as any).isActive === true : false;
+  // Use the registration hook to check if user is registered
+  const { isRegistered, address, isConnected } = useNgoRegistration();
   
   // Handle "Register as NGO" button - redirect if already registered
   const handleRegisterNGO = () => {
@@ -37,6 +26,15 @@ export default function Hero() {
       setIsNgoModalOpen(true);
     }
   };
+
+  // Auto-redirect if user becomes registered (e.g., after successful registration)
+  useEffect(() => {
+    if (isConnected && isRegistered && isNgoModalOpen) {
+      console.log('✅ User is now registered, closing modal and redirecting to dashboard');
+      setIsNgoModalOpen(false);
+      router.push('/ngo/dashboard');
+    }
+  }, [isConnected, isRegistered, isNgoModalOpen, router]);
   return (
     <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-emerald-50/50 to-white">
       <div className="max-w-7xl mx-auto">

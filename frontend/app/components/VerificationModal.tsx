@@ -85,6 +85,18 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   }, [isConnected, isRegistered, isOpen, onClose, router]);
 
+  // Redirect to dashboard after successful registration
+  useEffect(() => {
+    if (isRegistrationSuccess && isConnected) {
+      console.log('✅ Registration successful! Redirecting to NGO dashboard...');
+      // Close modal and redirect after a short delay to show success message
+      setTimeout(() => {
+        onClose();
+        router.push('/ngo/dashboard');
+      }, 2000); // 2 second delay to show success message
+    }
+  }, [isRegistrationSuccess, isConnected, onClose, router]);
+
   // Initialize Self Protocol app when wallet is connected and on step 2
   useEffect(() => {
     if (!isOpen || !address || currentStep !== 2) return;
