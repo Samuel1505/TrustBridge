@@ -667,9 +667,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                     <div className="space-y-4">
                       <button
                         onClick={handleApproveCUSD}
-                        disabled={isLoading || hasEnoughBalance === false}
+                        disabled={isLoading || (hasEnoughBalance === false && balance !== undefined)}
                         className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
-                        title={hasEnoughBalance === false ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : ''}
+                        title={hasEnoughBalance === false && balance !== undefined ? 'Insufficient cUSD balance. You need at least 1 cUSD.' : (isLoading ? 'Processing...' : 'Click to approve 1 cUSD')}
                       >
                         {isLoading ? (
                           <>
