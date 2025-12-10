@@ -27,6 +27,7 @@ export function useNgoRegistration() {
   
   const { address, isConnected } = useAccount();
   const { writeContract, data: hash, isPending } = useWriteContract();
+  const publicClient = usePublicClient();
   
   // Wait for approval transaction
   const { 
@@ -190,6 +191,59 @@ export function useNgoRegistration() {
         ipfsProfile,
         expiryDate: processedData.expiryDate.toString(),
       });
+
+      // Simulate the contract call first to get the actual revert reason
+      if (publicClient && address) {
+        try {
+          console.log('🔍 Simulating contract call to check for errors...');
+          await simulateContract(publicClient, {
+            account: address,
+            address: NGORegistryContract.address as `0x${string}`,
+            abi: NGORegistryContract.abi,
+            functionName: 'registerNGO',
+            args: [
+              processedData.did,
+              processedData.vcProofHash,
+              processedData.vcSignature,
+              processedData.age,
+              processedData.country,
+              ipfsProfile,
+              processedData.expiryDate,
+            ],
+          });
+          console.log('✅ Simulation passed - transaction should succeed');
+        } catch (simError: any) {
+          console.error('❌ Simulation failed:', simError);
+          // Try to decode the error
+          let errorMsg = 'Transaction will fail';
+          try {
+            const errorData = simError.data || simError.cause?.data;
+            if (errorData) {
+              const decoded = decodeErrorResult({
+                abi: NGORegistryContract.abi,
+                data: errorData,
+              });
+              console.log('Decoded simulation error:', decoded);
+              errorMsg = `Transaction will fail: ${decoded.errorName}`;
+              
+              // Map to user-friendly messages
+              if (decoded.errorName === 'ERC20InsufficientAllowance') {
+                errorMsg = 'Insufficient cUSD allowance. Please approve cUSD spending first.';
+              } else if (decoded.errorName === 'ERC20InsufficientBalance') {
+                errorMsg = 'Insufficient cUSD balance. You need at least 1 cUSD to register.';
+              } else if (decoded.errorName === 'ECDSAInvalidSignature') {
+                errorMsg = 'Invalid VC signature. This should not happen in staging mode.';
+              }
+            } else if (simError.message) {
+              errorMsg = simError.message;
+            }
+          } catch (e) {
+            console.log('Could not decode simulation error:', e);
+            errorMsg = simError.message || 'Transaction simulation failed';
+          }
+          throw new Error(errorMsg);
+        }
+      }
 
       // Call registerNGO on the contract
       // The contract will verify the signature on-chain (or skip in staging mode)
