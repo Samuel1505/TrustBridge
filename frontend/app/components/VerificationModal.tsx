@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Wallet, QrCode, DollarSign, UserCircle, CheckCircle2, ArrowRight, Loader2, Shield, AlertCircle, Smartphone, Monitor, Upload, Image as ImageIcon } from 'lucide-react';
-import { useAccount } from 'wagmi';
+// Removed wagmi import - using ethers.js directly via useNgoRegistration hook
 import { useAppKit } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
 import { formatEther } from 'viem';
@@ -56,7 +56,6 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const [errorMessage, setErrorMessage] = useState('');
   const [verificationProofData, setVerificationProofData] = useState<any | null>(null);
   
-  const { isConnected, address } = useAccount();
   const { open } = useAppKit();
   const { 
     registerNGO, 
@@ -69,7 +68,9 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     isApprovalSuccess,
     isRegistrationSuccess,
     approvalHash,
-    error: registrationError 
+    error: registrationError,
+    address,
+    isConnected
   } = useNgoRegistration();
 
   const router = useRouter();

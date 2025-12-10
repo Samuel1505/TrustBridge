@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
-import { parseEther, erc20Abi, decodeErrorResult, simulateContract } from 'viem';
-import { BrowserProvider } from 'ethers';
+import { BrowserProvider, Contract, parseUnits, formatEther } from 'ethers';
 import { NGORegistryContract } from '../abi';
 import { processSelfProtocolResult } from '../utils/selfProtocol';
 import { decodeContractError, getErrorMessage } from '../utils/errorDecoder';
 
 // cUSD address on Celo Sepolia
-const CUSD_ADDRESS = '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b' as `0x${string}`;
-const REGISTRATION_FEE = parseEther('1');
+const CUSD_ADDRESS = '0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b';
+const REGISTRATION_FEE = parseUnits('1', 18); // 1 cUSD
+
+// Celo Sepolia RPC URL
+const RPC_URL = process.env.NEXT_PUBLIC_CELO_SEPOLIA_RPC_URL || 'https://sepolia-forno.celo.org';
+
+// ERC20 ABI for balance and allowance checks
+const ERC20_ABI = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)',
+];
 
 /**
- * Hook for NGO registration with Self Protocol verification
+ * Hook for NGO registration with Self Protocol verification using ethers.js
  * 
  * This hook handles:
  * 1. Checking if user is already registered
@@ -22,167 +30,196 @@ const REGISTRATION_FEE = parseEther('1');
 export function useNgoRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [approvalHash, setApprovalHash] = useState<`0x${string}` | undefined>();
-  const [registrationHash, setRegistrationHash] = useState<`0x${string}` | undefined>();
+  const [approvalHash, setApprovalHash] = useState<string | undefined>();
+  const [registrationHash, setRegistrationHash] = useState<string | undefined>();
   const [isApproving, setIsApproving] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [provider, setProvider] = useState<BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<any>(null);
   
-  const { address, isConnected } = useAccount();
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const publicClient = usePublicClient();
-  
-  // Wait for approval transaction
-  const { 
-    isLoading: isApprovalConfirming, 
-    isSuccess: isApprovalSuccess 
-  } = useWaitForTransactionReceipt({
-    hash: approvalHash,
-  });
-  
-  // Wait for registration transaction
-  const { 
-    isLoading: isRegistrationConfirming, 
-    isSuccess: isRegistrationSuccess,
-    isError: isRegistrationError,
-    error: registrationError
-  } = useWaitForTransactionReceipt({
-    hash: registrationHash,
-  });
-  
-  // Track approval hash from writeContract
+  const [ngoData, setNgoData] = useState<any>(null);
+  const [allowance, setAllowance] = useState<bigint | null>(null);
+  const [balance, setBalance] = useState<bigint | null>(null);
+  const [isApprovalSuccess, setIsApprovalSuccess] = useState(false);
+  const [isRegistrationSuccess, setIsRegistrationSuccess] = useState(false);
+  const [isRegistrationError, setIsRegistrationError] = useState(false);
+  const [registrationError, setRegistrationError] = useState<any>(null);
+
+  // Initialize provider and get wallet address
   useEffect(() => {
-    if (hash && isApproving) {
-      setApprovalHash(hash);
-    } else if (hash && isRegistering) {
-      setRegistrationHash(hash);
-    }
-  }, [hash, isApproving, isRegistering]);
+    const initProvider = async () => {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          const provider = new BrowserProvider(window.ethereum);
+          setProvider(provider);
+          
+          // Get accounts
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setAddress(accounts[0].address);
+            setIsConnected(true);
+            const signer = await provider.getSigner();
+            setSigner(signer);
+          } else {
+            setAddress(null);
+            setIsConnected(false);
+            setSigner(null);
+          }
 
-  // Check if user is already registered
-  const { data: ngoData, refetch: refetchNgo } = useReadContract({
-    address: NGORegistryContract.address as `0x${string}`,
-    abi: NGORegistryContract.abi,
-    functionName: 'ngoByWallet',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
+          // Listen for account changes
+          window.ethereum.on('accountsChanged', async (accounts: string[]) => {
+            if (accounts.length > 0) {
+              setAddress(accounts[0]);
+              setIsConnected(true);
+              const signer = await provider.getSigner();
+              setSigner(signer);
+            } else {
+              setAddress(null);
+              setIsConnected(false);
+              setSigner(null);
+            }
+            // Reset state on account change
+            setNgoData(null);
+            setAllowance(null);
+            setBalance(null);
+          });
+        } catch (error) {
+          console.error('Error initializing provider:', error);
+        }
+      }
+    };
 
-  const isRegistered = ngoData ? (ngoData as any).isActive === true : false;
+    initProvider();
+  }, []);
 
-  // Check cUSD allowance
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: CUSD_ADDRESS,
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args: address && isConnected ? [address, NGORegistryContract.address as `0x${string}`] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
+  // Fetch NGO data
+  useEffect(() => {
+    const fetchNgoData = async () => {
+      if (!address || !provider) return;
 
+      try {
+        const contract = new Contract(
+          NGORegistryContract.address,
+          NGORegistryContract.abi,
+          provider
+        );
+        const data = await contract.ngoByWallet(address);
+        setNgoData(data);
+      } catch (error) {
+        console.error('Error fetching NGO data:', error);
+        setNgoData(null);
+      }
+    };
+
+    fetchNgoData();
+  }, [address, provider]);
+
+  // Fetch allowance
+  useEffect(() => {
+    const fetchAllowance = async () => {
+      if (!address || !provider) return;
+
+      try {
+        const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
+        const allowanceValue = await cUSDContract.allowance(address, NGORegistryContract.address);
+        setAllowance(allowanceValue);
+      } catch (error) {
+        console.error('Error fetching allowance:', error);
+        setAllowance(null);
+      }
+    };
+
+    fetchAllowance();
+  }, [address, provider, approvalHash]);
+
+  // Fetch balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!address || !provider) return;
+
+      try {
+        const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
+        const balanceValue = await cUSDContract.balanceOf(address);
+        setBalance(balanceValue);
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+        setBalance(null);
+      }
+    };
+
+    fetchBalance();
+  }, [address, provider]);
+
+  const isRegistered = ngoData ? ngoData.isActive === true : false;
   const needsApproval = allowance ? allowance < REGISTRATION_FEE : true;
-
-  // Check cUSD balance
-  const { data: balance, refetch: refetchBalance } = useReadContract({
-    address: CUSD_ADDRESS,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: address && isConnected ? [address] : undefined,
-    query: {
-      enabled: !!address && isConnected,
-    },
-  });
-
-  // hasEnoughBalance is true if balance exists and is >= fee, false if balance exists and is < fee, undefined if still loading
   const hasEnoughBalance = balance !== undefined ? balance >= REGISTRATION_FEE : undefined;
 
   /**
    * Approve cUSD for registration fee
    */
   const approveCUSD = async () => {
-    if (!address || !isConnected) {
+    if (!address || !isConnected || !signer) {
       throw new Error('Wallet not connected');
     }
 
     setIsLoading(true);
     setIsApproving(true);
     setError(null);
-    setApprovalHash(undefined);
+    setIsApprovalSuccess(false);
 
     try {
-      writeContract({
-        address: CUSD_ADDRESS,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [NGORegistryContract.address as `0x${string}`, REGISTRATION_FEE],
-      });
-      // Hash will be set via useEffect when writeContract returns it
+      const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, signer);
+      const tx = await cUSDContract.approve(NGORegistryContract.address, REGISTRATION_FEE);
+      setApprovalHash(tx.hash);
+      
+      // Wait for transaction
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        setIsApprovalSuccess(true);
+        // Refresh allowance
+        const newAllowance = await cUSDContract.allowance(address, NGORegistryContract.address);
+        setAllowance(newAllowance);
+      } else {
+        throw new Error('Approval transaction failed');
+      }
     } catch (err: any) {
       console.error('Approval error:', err);
       setError(err.message || 'Failed to approve cUSD');
+      throw err;
+    } finally {
       setIsLoading(false);
       setIsApproving(false);
     }
   };
-  
-  // Reset loading state when approval is successful
-  useEffect(() => {
-    if (isApprovalSuccess) {
-      console.log('✅ cUSD approval confirmed!');
-      setIsLoading(false);
-      setIsApproving(false);
-      // Refetch allowance to update needsApproval
-      refetchAllowance();
-    }
-  }, [isApprovalSuccess, refetchAllowance]);
 
   /**
-   * Register NGO with Self Protocol verification data
+   * Register NGO with Self Protocol verification
    */
-  const registerNGO = async (
-    selfProtocolResult: any,
-    ipfsProfile: string
-  ) => {
-    if (!address || !isConnected) {
+  const registerNGO = async (verificationData: any, ipfsProfile: string) => {
+    if (!address || !isConnected || !signer) {
       throw new Error('Wallet not connected');
     }
 
-    if (isRegistered) {
-      throw new Error('You are already registered as an NGO');
-    }
-
-    // Check balance before attempting registration
     if (!hasEnoughBalance) {
       throw new Error('Insufficient cUSD balance. You need at least 1 cUSD to register.');
     }
 
-    // Check allowance
     if (needsApproval) {
-      throw new Error('Please approve cUSD spending first. You need to approve 1 cUSD for the registration fee.');
+      throw new Error('Please approve cUSD spending first.');
     }
 
     setIsLoading(true);
     setIsRegistering(true);
     setError(null);
-    setRegistrationHash(undefined);
+    setRegistrationError(null);
+    setIsRegistrationError(false);
+    setIsRegistrationSuccess(false);
 
     try {
       // Process Self Protocol result
-      const processedData = processSelfProtocolResult(selfProtocolResult);
-      if (!processedData) {
-        throw new Error('Failed to process Self Protocol verification result');
-      }
-
-      // Validate the data
-      if (processedData.age < 18) {
-        throw new Error('Founder must be 18 or older');
-      }
-
-      if (!ipfsProfile || ipfsProfile.length === 0) {
-        throw new Error('IPFS profile is required');
-      }
+      const processedData = processSelfProtocolResult(verificationData);
 
       // Log the data being sent for debugging
       console.log('📤 Calling registerNGO with data:', {
@@ -195,57 +232,17 @@ export function useNgoRegistration() {
         expiryDate: processedData.expiryDate.toString(),
       });
 
-      // Simulate the contract call first to get the actual revert reason
-      if (publicClient && address) {
-        try {
-          console.log('🔍 Simulating contract call to check for errors...');
-          await simulateContract(publicClient, {
-            account: address,
-            address: NGORegistryContract.address as `0x${string}`,
-            abi: NGORegistryContract.abi,
-            functionName: 'registerNGO',
-            args: [
-              processedData.did,
-              processedData.vcProofHash,
-              processedData.vcSignature,
-              processedData.age,
-              processedData.country,
-              ipfsProfile,
-              processedData.expiryDate,
-            ],
-          });
-          console.log('✅ Simulation passed - transaction should succeed');
-        } catch (simError: any) {
-          console.error('❌ Simulation failed:', simError);
-          // Try to decode the error
-          let errorMsg = 'Transaction will fail';
-          try {
-            const errorData = simError.data || simError.cause?.data;
-            if (errorData) {
-              const decoded = decodeErrorResult({
-                abi: NGORegistryContract.abi,
-                data: errorData,
-              });
-              console.log('Decoded simulation error:', decoded);
-              errorMsg = getErrorMessage(decoded.errorName);
-            } else if (simError.message) {
-              errorMsg = simError.message;
-            }
-          } catch (e) {
-            console.log('Could not decode simulation error:', e);
-            errorMsg = simError.message || 'Transaction simulation failed';
-          }
-          throw new Error(errorMsg);
-        }
-      }
+      // Create contract instance
+      const contract = new Contract(
+        NGORegistryContract.address,
+        NGORegistryContract.abi,
+        signer
+      );
 
-      // Call registerNGO on the contract
-      // The contract will verify the signature on-chain (or skip in staging mode)
-      writeContract({
-        address: NGORegistryContract.address as `0x${string}`,
-        abi: NGORegistryContract.abi,
-        functionName: 'registerNGO',
-        args: [
+      // Simulate the contract call first to get the actual revert reason
+      try {
+        console.log('🔍 Simulating contract call to check for errors...');
+        await contract.registerNGO.staticCall(
           processedData.did,
           processedData.vcProofHash,
           processedData.vcSignature,
@@ -253,34 +250,91 @@ export function useNgoRegistration() {
           processedData.country,
           ipfsProfile,
           processedData.expiryDate,
-        ],
-      });
-      // Hash will be set via useEffect when writeContract returns it
+        );
+        console.log('✅ Simulation passed - transaction should succeed');
+      } catch (simError: any) {
+        console.error('❌ Simulation failed:', simError);
+        // Try to decode the error
+        let errorMsg = 'Transaction will fail';
+        try {
+          if (simError.data) {
+            const decoded = await decodeContractError(
+              simError,
+              NGORegistryContract.address,
+              provider
+            );
+            if (decoded) {
+              console.log('Decoded simulation error:', decoded);
+              errorMsg = getErrorMessage(decoded.errorName);
+            } else {
+              errorMsg = simError.message || 'Transaction simulation failed';
+            }
+          } else {
+            errorMsg = simError.message || 'Transaction simulation failed';
+          }
+        } catch (e) {
+          console.log('Could not decode simulation error:', e);
+          errorMsg = simError.message || 'Transaction simulation failed';
+        }
+        throw new Error(errorMsg);
+      }
+
+      // Call registerNGO on the contract
+      const tx = await contract.registerNGO(
+        processedData.did,
+        processedData.vcProofHash,
+        processedData.vcSignature,
+        processedData.age,
+        processedData.country,
+        ipfsProfile,
+        processedData.expiryDate,
+      );
+      
+      setRegistrationHash(tx.hash);
+      
+      // Wait for transaction
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        setIsRegistrationSuccess(true);
+        // Refresh NGO data
+        const data = await contract.ngoByWallet(address);
+        setNgoData(data);
+      } else {
+        throw new Error('Registration transaction failed');
+      }
     } catch (err: any) {
       console.error('Registration error:', err);
       console.error('Error details:', {
         message: err.message,
-        cause: err.cause,
         data: err.data,
-        shortMessage: err.shortMessage,
+        reason: err.reason,
       });
       
       // Try to decode error if it has data
       let errorMsg = err.message || 'Failed to register NGO';
       try {
-        if (err.data) {
-          const decoded = decodeErrorResult({
-            abi: NGORegistryContract.abi,
-            data: err.data,
-          });
-          console.log('Decoded error from catch:', decoded);
-          errorMsg = `Contract error: ${decoded.errorName}`;
+        if (err.data && provider) {
+          const decoded = await decodeContractError(
+            err,
+            NGORegistryContract.address,
+            provider
+          );
+          if (decoded) {
+            console.log('Decoded error from catch:', decoded);
+            errorMsg = getErrorMessage(decoded.errorName);
+          }
         }
       } catch (e) {
         // Ignore decode errors
       }
       
       setError(errorMsg);
+      setRegistrationError(err);
+      setIsRegistrationError(true);
+      setIsLoading(false);
+      setIsRegistering(false);
+      throw err;
+    } finally {
       setIsLoading(false);
       setIsRegistering(false);
     }
@@ -297,38 +351,22 @@ export function useNgoRegistration() {
       // Try to decode the error if it has data
       const decodeError = async () => {
         try {
-          const errorData = (registrationError as any)?.data || (registrationError as any)?.cause?.data;
-          if (errorData) {
-            console.log('Attempting to decode error data with viem:', errorData);
+          const errorData = registrationError?.data;
+          if (errorData && provider) {
+            console.log('Attempting to decode error data with ethers:', errorData);
             try {
-              const decoded = decodeErrorResult({
-                abi: NGORegistryContract.abi,
-                data: errorData,
-              });
-              console.log('Decoded error (viem):', decoded);
-              errorMessage = getErrorMessage(decoded.errorName);
-              return errorMessage;
-            } catch (viemError) {
-              console.log('Viem decode failed, trying ethers.js fallback:', viemError);
-              
-              // Fallback to ethers.js for better error decoding
-              if (typeof window !== 'undefined' && window.ethereum) {
-                try {
-                  const provider = new BrowserProvider(window.ethereum);
-                  const decoded = await decodeContractError(
-                    registrationError,
-                    NGORegistryContract.address,
-                    provider
-                  );
-                  if (decoded) {
-                    console.log('Decoded error (ethers):', decoded);
-                    errorMessage = getErrorMessage(decoded.errorName);
-                    return errorMessage;
-                  }
-                } catch (ethersError) {
-                  console.log('Ethers decode also failed:', ethersError);
-                }
+              const decoded = await decodeContractError(
+                registrationError,
+                NGORegistryContract.address,
+                provider
+              );
+              if (decoded) {
+                console.log('Decoded error (ethers):', decoded);
+                errorMessage = getErrorMessage(decoded.errorName);
+                return errorMessage;
               }
+            } catch (ethersError) {
+              console.log('Ethers decode failed:', ethersError);
             }
           }
         } catch (e) {
@@ -364,16 +402,27 @@ export function useNgoRegistration() {
         setIsRegistering(false);
       });
     }
-  }, [isRegistrationError, registrationError]);
+  }, [isRegistrationError, registrationError, provider]);
 
   // Refetch NGO data after successful registration
   useEffect(() => {
-    if (isRegistrationSuccess) {
+    if (isRegistrationSuccess && address && provider) {
+      const refetchNgo = async () => {
+        try {
+          const contract = new Contract(
+            NGORegistryContract.address,
+            NGORegistryContract.abi,
+            provider
+          );
+          const data = await contract.ngoByWallet(address);
+          setNgoData(data);
+        } catch (error) {
+          console.error('Error refetching NGO data:', error);
+        }
+      };
       refetchNgo();
-      setIsLoading(false);
-      setIsRegistering(false);
     }
-  }, [isRegistrationSuccess, refetchNgo]);
+  }, [isRegistrationSuccess, address, provider]);
 
   return {
     registerNGO,
@@ -381,13 +430,14 @@ export function useNgoRegistration() {
     isRegistered,
     needsApproval,
     hasEnoughBalance,
-    balance,
-    isLoading: isLoading || isPending || isApprovalConfirming || isRegistrationConfirming,
+    balance: balance ? BigInt(balance.toString()) : undefined,
+    isLoading: isLoading || isApproving || isRegistering,
     isApprovalSuccess,
     isRegistrationSuccess,
     error,
     approvalHash,
     registrationHash,
+    address,
+    isConnected,
   };
 }
-
