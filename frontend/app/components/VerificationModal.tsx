@@ -272,10 +272,6 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
       setCurrentStep(4);
     }
   }, [currentStep, needsApproval, isApprovalSuccess]);
-        console.log('✅ Approval confirmed - waiting for user to click continue');
-      }
-    }
-  }, [isApprovalSuccess, currentStep]);
 
   // Handle image upload and mock IPFS upload
   const handleImageUpload = async (file: File) => {
