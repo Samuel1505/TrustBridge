@@ -15,7 +15,7 @@ export default function Hero() {
   const router = useRouter();
   
   // Use the registration hook to check if user is registered
-  const { isRegistered, address, isConnected } = useNgoRegistration();
+  const { isRegistered, address, isConnected, isCheckingRegistration } = useNgoRegistration();
   
   // Handle "Register as NGO" button - redirect if already registered
   const handleRegisterNGO = () => {
@@ -25,6 +25,11 @@ export default function Hero() {
       setIsNgoModalOpen(true);
     }
   };
+  
+  // Don't show button text until we've checked registration status
+  const buttonText = isCheckingRegistration 
+    ? 'Checking...' 
+    : (isRegistered ? 'Go to Dashboard' : 'Register as NGO');
 
   // Auto-redirect if user becomes registered (e.g., after successful registration)
   useEffect(() => {
@@ -55,12 +60,13 @@ export default function Hero() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
-              <button
+              <button 
                 onClick={handleRegisterNGO}
-                className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 justify-center"
+                disabled={isCheckingRegistration}
+                className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isRegistered ? 'Go to Dashboard' : 'Register as NGO'}
-                <ArrowRight className="w-5 h-5" />
+                {buttonText}
+                {!isCheckingRegistration && <ArrowRight className="w-5 h-5" />}
               </button>
               <button
                 onClick={() => setIsDonorModalOpen(true)}

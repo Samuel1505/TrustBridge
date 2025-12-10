@@ -47,6 +47,8 @@ export function useNgoRegistration() {
   const [isRegistrationError, setIsRegistrationError] = useState(false);
   const [registrationError, setRegistrationError] = useState<any>(null);
   const [stagingMode, setStagingMode] = useState<boolean | null>(null);
+  const [isCheckingRegistration, setIsCheckingRegistration] = useState(true);
+  const [registrationCheckAttempts, setRegistrationCheckAttempts] = useState(0);
 
   // Initialize provider and get wallet address
   useEffect(() => {
@@ -100,21 +102,28 @@ export function useNgoRegistration() {
     initProvider();
   }, []);
 
-  // Fetch NGO data
+  // Fetch NGO data with retry logic and caching
   useEffect(() => {
-    const fetchNgoData = async () => {
+    const fetchNgoData = async (retryCount = 0) => {
       if (!address || !provider) {
         setNgoData(null);
+        setIsCheckingRegistration(false);
         return;
       }
 
+      const maxRetries = 3;
+      const retryDelay = 2000; // 2 seconds
+
       try {
+        setIsCheckingRegistration(true);
+        
         // Check if we're on the correct network
         const network = await provider.getNetwork();
         const expectedChainId = 11155711n; // Celo Sepolia
         if (network.chainId !== expectedChainId) {
           console.warn(`Wrong network. Expected ${expectedChainId}, got ${network.chainId}`);
           setNgoData(null);
+          setIsCheckingRegistration(false);
           return;
         }
 
@@ -124,27 +133,62 @@ export function useNgoRegistration() {
           provider
         );
         const data = await contract.ngoByWallet(address);
+        
         // Always store the data if we get it, regardless of isActive status
         setNgoData(data);
+        
+        // Cache the registration status
         if (data && data.isActive === true) {
-          console.log('✅ User is registered as NGO');
+          localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'true');
+          console.log('✅ User is registered as NGO (cached)');
         } else {
+          localStorage.setItem(`ngo_registered_${address.toLowerCase()}`, 'false');
           console.log('ℹ️ User is not registered as NGO');
         }
+        
+        setIsCheckingRegistration(false);
+        setRegistrationCheckAttempts(0);
       } catch (error: any) {
+        // Check if we have cached registration status
+        const cached = localStorage.getItem(`ngo_registered_${address.toLowerCase()}`);
+        const wasRegistered = cached === 'true';
+        
         // Only log non-RPC errors to avoid console spam
         if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
           console.error('Error fetching NGO data:', error);
         }
-        // Don't reset ngoData on RPC errors - preserve the registration state
-        // This prevents the "Register as NGO" button from flickering when RPC calls fail
-        if (error?.code === 'CALL_EXCEPTION' || error?.code === 'NETWORK_ERROR') {
-          // Keep previous state - don't reset to null on RPC errors
-          // This is important: if user is registered but RPC fails, we don't want to show "Register" button
-          console.log('⚠️ RPC error fetching NGO data, preserving previous state');
+        
+        // Retry logic for RPC errors
+        if ((error?.code === 'CALL_EXCEPTION' || error?.code === 'NETWORK_ERROR') && retryCount < maxRetries) {
+          console.log(`⚠️ RPC error fetching NGO data, retrying... (${retryCount + 1}/${maxRetries})`);
+          setRegistrationCheckAttempts(retryCount + 1);
+          
+          // If we have cached registration status, use it temporarily
+          if (wasRegistered && !ngoData) {
+            console.log('📦 Using cached registration status while retrying...');
+            // Don't set ngoData to a fake object, but mark as checking
+          }
+          
+          // Retry after delay
+          setTimeout(() => {
+            fetchNgoData(retryCount + 1);
+          }, retryDelay);
         } else {
-          // Only reset on other types of errors (not RPC-related)
-          setNgoData(null);
+          // Max retries reached or non-RPC error
+          if (retryCount >= maxRetries) {
+            console.log('⚠️ Max retries reached for fetching NGO data');
+          }
+          
+          // If we have cached registration status and previous data, preserve it
+          if (wasRegistered && ngoData) {
+            console.log('📦 Preserving cached registration state after RPC failure');
+            // Keep ngoData as is
+          } else if (!wasRegistered || !ngoData) {
+            // Only reset if we're sure user is not registered
+            setNgoData(null);
+          }
+          
+          setIsCheckingRegistration(false);
         }
       }
     };
