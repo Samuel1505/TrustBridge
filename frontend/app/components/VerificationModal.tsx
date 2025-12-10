@@ -250,21 +250,28 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   const handleApproveCUSD = async () => {
     try {
       await approveCUSD();
-      // Don't advance here - wait for isApprovalSuccess in useEffect
+      // Approval success will be handled by useEffect
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to approve cUSD');
     }
   };
   
-  // Handle approval success
+  // Handle approval success - auto-advance to registration step
   useEffect(() => {
-    if (isApprovalSuccess) {
-      if (currentStep === 4) {
-        // On registration step - approval is complete, user can now register
-        console.log('✅ Approval confirmed - user can now register');
-        // The needsApproval will update automatically via the hook
-      } else if (currentStep === 3) {
-        // On approval step - wait for user to click continue
+    if (isApprovalSuccess && currentStep === 3) {
+      console.log('✅ Approval successful, advancing to registration step');
+      setCurrentStep(4);
+    }
+  }, [isApprovalSuccess, currentStep]);
+  
+  // Auto-advance to registration step if already approved
+  useEffect(() => {
+    if (currentStep === 3 && !needsApproval && !isApprovalSuccess) {
+      // User already has approval, skip to registration
+      console.log('✅ Already approved, advancing to registration step');
+      setCurrentStep(4);
+    }
+  }, [currentStep, needsApproval, isApprovalSuccess]);
         console.log('✅ Approval confirmed - waiting for user to click continue');
       }
     }
@@ -893,7 +900,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
                       </button>
                       <button
                         onClick={handleRegisterNGO}
-                        disabled={isLoading || !ipfsProfile || isUploading || hasEnoughBalance === false || needsApproval}
+                        disabled={isLoading || !ipfsProfile || isUploading || hasEnoughBalance === false || (needsApproval && !isApprovalSuccess)}
                         className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isLoading ? (
