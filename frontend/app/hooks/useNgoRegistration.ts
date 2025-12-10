@@ -153,6 +153,29 @@ export function useNgoRegistration() {
     fetchBalance();
   }, [address, provider]);
 
+  // Fetch staging mode status
+  useEffect(() => {
+    if (!provider) return;
+
+    const fetchStagingMode = async () => {
+      try {
+        const contract = new Contract(
+          NGORegistryContract.address,
+          NGORegistryContract.abi,
+          provider
+        );
+        const mode = await contract.stagingMode();
+        setStagingMode(mode);
+        console.log('📊 Staging mode status:', mode ? '✅ ENABLED' : '❌ DISABLED');
+      } catch (error) {
+        console.error('Error fetching staging mode:', error);
+        setStagingMode(null);
+      }
+    };
+
+    fetchStagingMode();
+  }, [provider]);
+
   const isRegistered = ngoData ? ngoData.isActive === true : false;
   const needsApproval = allowance ? allowance < REGISTRATION_FEE : true;
   const hasEnoughBalance = balance !== undefined ? balance >= REGISTRATION_FEE : undefined;
@@ -441,5 +464,6 @@ export function useNgoRegistration() {
     registrationHash,
     address,
     isConnected,
+    stagingMode,
   };
 }
