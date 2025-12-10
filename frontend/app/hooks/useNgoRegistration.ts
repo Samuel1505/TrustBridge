@@ -180,8 +180,19 @@ export function useNgoRegistration() {
         throw new Error('IPFS profile is required');
       }
 
+      // Log the data being sent for debugging
+      console.log('📤 Calling registerNGO with data:', {
+        did: processedData.did,
+        vcProofHash: processedData.vcProofHash,
+        vcSignature: processedData.vcSignature,
+        age: processedData.age,
+        country: processedData.country,
+        ipfsProfile,
+        expiryDate: processedData.expiryDate.toString(),
+      });
+
       // Call registerNGO on the contract
-      // The contract will verify the signature on-chain
+      // The contract will verify the signature on-chain (or skip in staging mode)
       writeContract({
         address: NGORegistryContract.address as `0x${string}`,
         abi: NGORegistryContract.abi,
@@ -199,7 +210,29 @@ export function useNgoRegistration() {
       // Hash will be set via useEffect when writeContract returns it
     } catch (err: any) {
       console.error('Registration error:', err);
-      setError(err.message || 'Failed to register NGO');
+      console.error('Error details:', {
+        message: err.message,
+        cause: err.cause,
+        data: err.data,
+        shortMessage: err.shortMessage,
+      });
+      
+      // Try to decode error if it has data
+      let errorMsg = err.message || 'Failed to register NGO';
+      try {
+        if (err.data) {
+          const decoded = decodeErrorResult({
+            abi: NGORegistryContract.abi,
+            data: err.data,
+          });
+          console.log('Decoded error from catch:', decoded);
+          errorMsg = `Contract error: ${decoded.errorName}`;
+        }
+      } catch (e) {
+        // Ignore decode errors
+      }
+      
+      setError(errorMsg);
       setIsLoading(false);
       setIsRegistering(false);
     }
