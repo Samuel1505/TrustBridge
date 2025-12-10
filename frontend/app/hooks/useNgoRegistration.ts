@@ -103,7 +103,10 @@ export function useNgoRegistration() {
   // Fetch NGO data
   useEffect(() => {
     const fetchNgoData = async () => {
-      if (!address || !provider) return;
+      if (!address || !provider) {
+        setNgoData(null);
+        return;
+      }
 
       try {
         // Check if we're on the correct network
@@ -121,13 +124,28 @@ export function useNgoRegistration() {
           provider
         );
         const data = await contract.ngoByWallet(address);
-        setNgoData(data);
+        // Check if the data indicates registration (isActive should be true)
+        if (data && data.isActive === true) {
+          setNgoData(data);
+          console.log('✅ User is registered as NGO');
+        } else {
+          setNgoData(null);
+          console.log('ℹ️ User is not registered as NGO');
+        }
       } catch (error: any) {
         // Only log non-RPC errors to avoid console spam
         if (error?.code !== 'CALL_EXCEPTION' && error?.code !== 'NETWORK_ERROR') {
           console.error('Error fetching NGO data:', error);
         }
-        setNgoData(null);
+        // Don't set to null on RPC errors - keep previous state to avoid flickering
+        // Only set to null if we're sure the user is not registered
+        if (error?.code === 'CALL_EXCEPTION') {
+          // This might be a revert, which could mean not registered
+          // But we'll keep the previous state to be safe
+          console.log('⚠️ Could not fetch NGO data, keeping previous state');
+        } else {
+          setNgoData(null);
+        }
       }
     };
 
