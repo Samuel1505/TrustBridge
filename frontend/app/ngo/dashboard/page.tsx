@@ -58,19 +58,31 @@ export default function NGODashboardPage() {
             provider
           );
           
-          // First check if user is verified
-          const isVerified = await contract.isVerified(address);
-          if (isVerified) {
+          // Fetch NGO data directly - we'll check isActive separately
+          // This allows us to show dashboard even if VC is expired (user can renew)
+          try {
             const ngoData = await contract.ngoByWallet(address);
-            console.log('✅ NGO data fetched:', {
-              isActive: ngoData.isActive,
-              registeredAt: ngoData.registeredAt?.toString(),
-              ipfsProfile: ngoData.ipfsProfile
-            });
-            setNgo(ngoData);
-          } else {
-            console.log('⚠️ User is not verified/registered');
-            setNgo(null);
+            // Check if the NGO exists and is active
+            if (ngoData && ngoData.isActive === true) {
+              console.log('✅ NGO data fetched:', {
+                isActive: ngoData.isActive,
+                registeredAt: ngoData.registeredAt?.toString(),
+                ipfsProfile: ngoData.ipfsProfile,
+                vcExpiryDate: ngoData.vcExpiryDate?.toString()
+              });
+              setNgo(ngoData);
+            } else {
+              console.log('⚠️ NGO data exists but is not active');
+              setNgo(null);
+            }
+          } catch (fetchError: any) {
+            // If the call fails, user is likely not registered
+            if (fetchError?.code === 'CALL_EXCEPTION') {
+              console.log('⚠️ User is not registered (contract call exception)');
+              setNgo(null);
+            } else {
+              throw fetchError; // Re-throw non-call-exception errors
+            }
           }
         }
       } catch (error: any) {
