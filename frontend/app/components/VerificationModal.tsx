@@ -72,7 +72,6 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     error: registrationError,
     address,
     isConnected,
-    stagingMode
   } = useNgoRegistration();
   const { isDonorVerified, isChecking: isCheckingDonor } = useDonorVerification();
 
@@ -209,7 +208,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   };
 
   // Handle verification error
-  const handleVerificationError = (data?: { error_code?: string; reason?: string; status?: string }) => {
+  const handleVerificationError = (data?: { error_code?: string; reason?: string; status?: string; message?: string } | string) => {
     console.error('❌ Verification failed:', data);
     
     // Extract error message from various possible formats

@@ -16,7 +16,7 @@ export default function Hero() {
   const router = useRouter();
   
   // Use the registration hook to check if user is registered as NGO
-  const { isRegistered, address, isConnected, isCheckingRegistration } = useNgoRegistration();
+  const { isRegistered, address, isConnected, isLoading } = useNgoRegistration();
   
   // Use the donor verification hook to check if user is verified as donor
   const { isDonorVerified, isChecking: isCheckingDonor } = useDonorVerification();
@@ -41,7 +41,7 @@ export default function Hero() {
   };
   
   // Don't show button text until we've checked registration status
-  const ngoButtonText = isCheckingRegistration 
+  const ngoButtonText = isLoading 
     ? 'Checking...' 
     : (isRegistered ? 'Go to Dashboard' : 'Register as NGO');
   
@@ -82,11 +82,11 @@ export default function Hero() {
               {!isDonorVerified && (
                 <button 
                   onClick={handleRegisterNGO}
-                  disabled={isCheckingRegistration}
+                  disabled={isLoading}
                   className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {ngoButtonText}
-                  {!isCheckingRegistration && <ArrowRight className="w-5 h-5" />}
+                  {!isLoading && <ArrowRight className="w-5 h-5" />}
                 </button>
               )}
               
