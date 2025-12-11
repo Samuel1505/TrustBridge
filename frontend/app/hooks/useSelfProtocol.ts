@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-import {
-  SELF_PROTOCOL_CONFIG,
-  buildVerificationUrl,
-  isValidSelfProtocolOrigin,
-  getPopupFeatures,
-  type SelfVerificationResult,
-} from '../config/selfProtocol';
+import type { SelfVerificationResult } from '../config/selfProtocol';
 
 /**
  * Hook for Self Protocol verification using popup window
@@ -19,48 +13,40 @@ export function useSelfProtocol() {
   // Listen for messages from Self Protocol popup
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Validate origin
-      if (!isValidSelfProtocolOrigin(event.origin)) {
+      // Validate origin - check if it's from Self Protocol
+      const selfProtocolOrigins = ['https://app.self.id', 'https://self.id'];
+      if (!selfProtocolOrigins.some(origin => event.origin.startsWith(origin))) {
         console.warn('Received message from untrusted origin:', event.origin);
         return;
       }
 
       const { type, data } = event.data || {};
 
-      switch (type) {
-        case SELF_PROTOCOL_CONFIG.events.success:
-          console.log('Self Protocol verification successful:', data);
-          setResult({
-            success: true,
-            data: {
-              userId: address || '',
-              ...data,
-            },
-          });
-          setIsVerifying(false);
-          break;
-
-        case SELF_PROTOCOL_CONFIG.events.error:
-          console.error('Self Protocol verification failed:', data);
-          setResult({
-            success: false,
-            error: data?.message || data?.error || 'Verification failed',
-          });
-          setIsVerifying(false);
-          break;
-
-        case SELF_PROTOCOL_CONFIG.events.cancelled:
-          console.log('Self Protocol verification cancelled');
-          setResult({
-            success: false,
-            error: 'Verification cancelled by user',
-          });
-          setIsVerifying(false);
-          break;
-
-        default:
-          // Ignore other message types
-          break;
+      // Handle Self Protocol verification messages
+      if (type === 'self_protocol_success' || type === 'success') {
+        console.log('Self Protocol verification successful:', data);
+        setResult({
+          success: true,
+          data: {
+            userId: address || '',
+            ...data,
+          },
+        });
+        setIsVerifying(false);
+      } else if (type === 'self_protocol_error' || type === 'error') {
+        console.error('Self Protocol verification failed:', data);
+        setResult({
+          success: false,
+          error: data?.message || data?.error || 'Verification failed',
+        });
+        setIsVerifying(false);
+      } else if (type === 'self_protocol_cancelled' || type === 'cancelled') {
+        console.log('Self Protocol verification cancelled');
+        setResult({
+          success: false,
+          error: 'Verification cancelled by user',
+        });
+        setIsVerifying(false);
       }
     };
 
@@ -82,8 +68,9 @@ export function useSelfProtocol() {
     setIsVerifying(true);
     setResult(null);
 
-    const verificationUrl = buildVerificationUrl(address);
-    const popupFeatures = getPopupFeatures();
+    // Build verification URL - this would need to be implemented based on Self Protocol API
+    const verificationUrl = `https://app.self.id/verify?userId=${address}`;
+    const popupFeatures = 'width=500,height=700,left=100,top=100';
 
     // Open popup window
     const popup = window.open(
