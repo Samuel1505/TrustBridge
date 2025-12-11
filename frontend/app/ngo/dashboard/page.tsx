@@ -22,7 +22,7 @@ import { Contract, BrowserProvider } from 'ethers';
 import { NGORegistryContract } from '../../abi';
 
 export default function NGODashboardPage() {
-  const { address, isConnected, isRegistered } = useNgoRegistration();
+  const { address, isConnected } = useNgoRegistration();
   const { open } = useAppKit();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -57,8 +57,21 @@ export default function NGODashboardPage() {
             NGORegistryContract.abi,
             provider
           );
-          const ngoData = await contract.ngoByWallet(address);
-          setNgo(ngoData);
+          
+          // First check if user is verified
+          const isVerified = await contract.isVerified(address);
+          if (isVerified) {
+            const ngoData = await contract.ngoByWallet(address);
+            console.log('✅ NGO data fetched:', {
+              isActive: ngoData.isActive,
+              registeredAt: ngoData.registeredAt?.toString(),
+              ipfsProfile: ngoData.ipfsProfile
+            });
+            setNgo(ngoData);
+          } else {
+            console.log('⚠️ User is not verified/registered');
+            setNgo(null);
+          }
         }
       } catch (error: any) {
         // Only log non-RPC errors to avoid console spam
@@ -75,28 +88,39 @@ export default function NGODashboardPage() {
   }, [address, isConnected]);
 
   // Determine if user is registered based on local NGO data
-  const isUserRegistered = ngo && ngo.isActive === true;
+  // Only consider registered if we have NGO data AND it's active
+  const isUserRegistered = ngo !== null && ngo !== undefined && ngo.isActive === true;
 
   // Handle wallet connection and registration state
   useEffect(() => {
     // Only check registration status after we've finished loading NGO data
-    if (isConnected && !isLoadingNgo) {
-      if (!isUserRegistered) {
+    // and we have a connected wallet
+    if (isConnected && !isLoadingNgo && address) {
+      if (isUserRegistered) {
+        // User is registered, show dashboard
+        console.log('✅ User is registered, showing dashboard');
+        console.log('NGO data:', {
+          isActive: ngo?.isActive,
+          registeredAt: ngo?.registeredAt?.toString(),
+          ipfsProfile: ngo?.ipfsProfile
+        });
+        setIsLoading(false);
+      } else {
         // If not registered, redirect to home after a short delay
-        console.log('User is not registered, redirecting to home');
-        console.log('NGO data:', ngo);
+        // This gives time for any pending state updates
+        console.log('⚠️ User is not registered, will redirect to home');
+        console.log('NGO data state:', ngo);
         const redirectTimer = setTimeout(() => {
-          router.push('/');
-        }, 1500);
+          // Double-check before redirecting
+          if (!isUserRegistered) {
+            router.push('/');
+          }
+        }, 2000);
         
         return () => clearTimeout(redirectTimer);
-      } else {
-        // User is registered, show dashboard
-        console.log('User is registered, showing dashboard');
-        setIsLoading(false);
       }
     }
-  }, [isConnected, isLoadingNgo, isUserRegistered, ngo, router]);
+  }, [isConnected, isLoadingNgo, isUserRegistered, ngo, address, router]);
 
 
   // Show loading state while checking connection and registration
@@ -142,8 +166,9 @@ export default function NGODashboardPage() {
     );
   }
 
-  if (!isRegistered) {
-    return null; // Will redirect
+  // Don't render if not registered (will redirect)
+  if (!isUserRegistered) {
+    return null;
   }
 
   // Format dates
