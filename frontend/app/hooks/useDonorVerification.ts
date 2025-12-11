@@ -65,7 +65,7 @@ export function useDonorVerification() {
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11142220n) {
+        if (network.chainId !== BigInt(11142220)) {
           setIsNgoRegistered(false);
           setIsChecking(false);
           return;
