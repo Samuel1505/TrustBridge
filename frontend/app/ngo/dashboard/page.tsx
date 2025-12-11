@@ -74,30 +74,69 @@ export default function NGODashboardPage() {
     fetchNgoData();
   }, [address, isConnected]);
 
+  // Determine if user is registered based on local NGO data
+  const isUserRegistered = ngo && ngo.isActive === true;
+
+  // Handle wallet connection and registration state
   useEffect(() => {
-    if (!isConnected) {
-      // Open wallet connection modal
-      open();
-    } else if (isConnected && !isLoadingNgo) {
-      if (!isRegistered) {
+    // Only check registration status after we've finished loading NGO data
+    if (isConnected && !isLoadingNgo) {
+      if (!isUserRegistered) {
         // If not registered, redirect to home after a short delay
         console.log('User is not registered, redirecting to home');
-        setTimeout(() => {
+        console.log('NGO data:', ngo);
+        const redirectTimer = setTimeout(() => {
           router.push('/');
-        }, 1000);
+        }, 1500);
+        
+        return () => clearTimeout(redirectTimer);
       } else {
         // User is registered, show dashboard
+        console.log('User is registered, showing dashboard');
         setIsLoading(false);
       }
     }
-  }, [isConnected, isLoadingNgo, isRegistered, router, open]);
+  }, [isConnected, isLoadingNgo, isUserRegistered, ngo, router]);
 
-  if (!isConnected || isLoading || isLoadingNgo) {
+
+  // Show loading state while checking connection and registration
+  if (isLoading || isLoadingNgo) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Loading your NGO dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show connection prompt if not connected
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <AlertCircle className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Wallet Not Connected</h2>
+            <p className="text-gray-600 mb-6">
+              Please connect your wallet to access the NGO dashboard.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => open()}
+                className="w-full px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
+              >
+                Connect Wallet
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Go Back Home
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );

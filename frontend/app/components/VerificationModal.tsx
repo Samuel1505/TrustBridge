@@ -305,8 +305,28 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
 
   // Handle NGO registration
   const handleRegisterNGO = async () => {
+    console.log('🔍 Register NGO clicked. State:', {
+      ipfsProfile,
+      hasEnoughBalance,
+      needsApproval,
+      isApprovalSuccess,
+      isLoading,
+      isUploading,
+    });
+
     if (!ipfsProfile || ipfsProfile.trim().length === 0) {
       setErrorMessage('Please upload an image for your NGO profile');
+      return;
+    }
+
+    // Check balance and approval - show error if not ready
+    if (hasEnoughBalance === false) {
+      setErrorMessage('Insufficient cUSD balance. You need at least 1 cUSD to register.');
+      return;
+    }
+
+    if (needsApproval) {
+      setErrorMessage('Please approve cUSD spending first. You need to approve 1 cUSD for the registration fee.');
       return;
     }
 
