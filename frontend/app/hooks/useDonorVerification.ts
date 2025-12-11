@@ -19,8 +19,7 @@ export function useDonorVerification() {
     const initProvider = async () => {
       if (typeof window !== 'undefined' && window.ethereum) {
         try {
-          const ethereum = window.ethereum as any;
-          const provider = new BrowserProvider(ethereum);
+          const provider = new BrowserProvider(window.ethereum as any);
           setProvider(provider);
           
           const accounts = await provider.listAccounts();
