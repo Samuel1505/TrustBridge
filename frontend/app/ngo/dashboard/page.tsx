@@ -44,7 +44,7 @@ export default function NGODashboardPage() {
           
           // Check if we're on the correct network
           const network = await provider.getNetwork();
-          const expectedChainId = 11155711n; // Celo Sepolia
+          const expectedChainId = 11142220n; // Celo Sepolia
           if (network.chainId !== expectedChainId) {
             console.warn(`Wrong network. Expected ${expectedChainId}, got ${network.chainId}`);
             setNgo(null);
