@@ -122,7 +122,7 @@ export default function DonorVerificationModal({ isOpen, onClose, onVerified }: 
   };
 
   // Handle verification error
-  const handleVerificationError = (data?: { error_code?: string; reason?: string; status?: string }) => {
+  const handleVerificationError = (data?: { error_code?: string; reason?: string; status?: string; message?: string } | string) => {
     console.error('❌ Verification failed:', data);
     
     let errorMsg = 'Verification failed. Please try again.';
