@@ -38,6 +38,12 @@ export async function decodeContractError(
       const errorFragment = contract.interface.getError(errorSelector);
       if (errorFragment) {
         const decoded = contract.interface.parseError(errorData);
+        if (!decoded) {
+          return {
+            errorName: 'UnknownError',
+            errorMessage: 'Unknown contract error',
+          };
+        }
         return {
           errorName: decoded.name,
           errorMessage: decoded.args?.toString() || decoded.name,
@@ -48,6 +54,12 @@ export async function decodeContractError(
       try {
         // Some errors are just revert strings
         const reason = contract.interface.parseError(errorData);
+        if (!reason) {
+          return {
+            errorName: 'UnknownError',
+            errorMessage: 'Unknown contract error',
+          };
+        }
         return {
           errorName: reason.name,
           errorMessage: reason.args?.toString() || reason.name,

@@ -61,7 +61,7 @@ export function processSelfProtocolResult(result: any): SelfProtocolData | null 
         vcSignature: mockSignature as `0x${string}`,
         age: 25, // Default age for testing
         country: 'US', // Default country for testing
-        expiryDate: BigInt(Math.floor(Date.now() / 1000)) + 365n * 24n * 60n * 60n, // 1 year from now
+        expiryDate: BigInt(Math.floor(Date.now() / 1000)) + BigInt(365) * BigInt(24) * BigInt(60) * BigInt(60), // 1 year from now
       };
     }
     
@@ -145,7 +145,7 @@ export function processSelfProtocolResult(result: any): SelfProtocolData | null 
         : BigInt(Math.floor(new Date(expiry).getTime() / 1000));
     } else {
       // Default: 1 year from now
-      expiryDate = BigInt(Math.floor(Date.now() / 1000)) + 365n * 24n * 60n * 60n;
+      expiryDate = BigInt(Math.floor(Date.now() / 1000)) + BigInt(365) * BigInt(24) * BigInt(60) * BigInt(60);
     }
     
     return {

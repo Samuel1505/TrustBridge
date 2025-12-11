@@ -40,11 +40,11 @@ export default function NGODashboardPage() {
       try {
         // Get provider from window.ethereum
         if (typeof window !== 'undefined' && window.ethereum) {
-          const provider = new BrowserProvider(window.ethereum);
+          const provider = new BrowserProvider(window.ethereum as any);
           
           // Check if we're on the correct network
           const network = await provider.getNetwork();
-          const expectedChainId = 11142220n; // Celo Sepolia
+          const expectedChainId = BigInt(11142220); // Celo Sepolia
           if (network.chainId !== expectedChainId) {
             console.warn(`Wrong network. Expected ${expectedChainId}, got ${network.chainId}`);
             setNgo(null);
@@ -227,7 +227,7 @@ export default function NGODashboardPage() {
               <button
                 onClick={() => {
                   if (typeof window !== 'undefined' && window.ethereum) {
-                    window.ethereum.request({ method: 'eth_requestAccounts' });
+                    (window.ethereum as any).request({ method: 'eth_requestAccounts' });
                   }
                 }}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
