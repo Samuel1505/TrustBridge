@@ -18,8 +18,9 @@ export function useDonorVerification() {
   useEffect(() => {
     const initProvider = async () => {
       if (typeof window !== 'undefined' && window.ethereum) {
+        const ethereum = window.ethereum as any;
         try {
-          const provider = new BrowserProvider(window.ethereum as any);
+          const provider = new BrowserProvider(ethereum);
           setProvider(provider);
           
           const accounts = await provider.listAccounts();
