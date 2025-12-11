@@ -90,7 +90,7 @@ export function useNgoRegistration() {
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11155711n) {
+        if (network.chainId !== 11142220n) {
           setNgoData(null);
           return;
         }
@@ -127,7 +127,7 @@ export function useNgoRegistration() {
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11155711n) {
+        if (network.chainId !== 11142220n) {
           setAllowance(null);
           return;
         }
@@ -161,14 +161,27 @@ export function useNgoRegistration() {
   // Check balance
   useEffect(() => {
     const checkBalance = async () => {
-      if (!address || !provider) return;
+      if (!address || !provider) {
+        setBalance(null);
+        return;
+      }
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11155711n) return;
+        if (network.chainId !== 11142220n) {
+          setBalance(null);
+          return;
+        }
 
         const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, provider);
         const balanceValue = await cUSDContract.balanceOf(address);
+        console.log('🔍 Balance check:', {
+          balance: balanceValue.toString(),
+          balanceInEther: (Number(balanceValue) / 1e18).toFixed(6),
+          required: REGISTRATION_FEE.toString(),
+          requiredInEther: (Number(REGISTRATION_FEE) / 1e18).toFixed(6),
+          hasEnough: balanceValue >= REGISTRATION_FEE
+        });
         setBalance(balanceValue);
       } catch (error) {
         console.error('Error checking balance:', error);
@@ -177,11 +190,29 @@ export function useNgoRegistration() {
     };
 
     checkBalance();
+    
+    // Refresh balance every 5 seconds to catch updates
+    const interval = setInterval(checkBalance, 5000);
+    return () => clearInterval(interval);
   }, [address, provider]);
 
   const isRegistered = ngoData && ngoData.isActive === true;
   const needsApproval = allowance === null || allowance < REGISTRATION_FEE;
   const hasEnoughBalance = balance !== null && balance !== undefined ? balance >= REGISTRATION_FEE : undefined;
+  
+  // Debug log for balance check
+  useEffect(() => {
+    if (balance !== null && balance !== undefined) {
+      console.log('🔍 Balance comparison:', {
+        balance: balance.toString(),
+        balanceInEther: (Number(balance) / 1e18).toFixed(6),
+        required: REGISTRATION_FEE.toString(),
+        requiredInEther: (Number(REGISTRATION_FEE) / 1e18).toFixed(6),
+        hasEnoughBalance,
+        comparison: `${balance.toString()} >= ${REGISTRATION_FEE.toString()} = ${balance >= REGISTRATION_FEE}`
+      });
+    }
+  }, [balance, hasEnoughBalance]);
 
   // Approve cUSD
   const approveCUSD = async () => {
@@ -275,6 +306,7 @@ export function useNgoRegistration() {
     isRegistered,
     needsApproval,
     hasEnoughBalance: hasEnoughBalance === true,
+    hasEnoughBalanceRaw: hasEnoughBalance, // Include raw value for debugging
     balance: balance ? BigInt(balance.toString()) : undefined,
     isLoading: isLoading || isApproving || isRegistering,
     isApprovalSuccess,
