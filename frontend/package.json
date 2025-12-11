@@ -16,6 +16,7 @@
     "@reown/appkit-adapter-wagmi": "^1.8.14",
     "@selfxyz/core": "^1.1.0-beta.7",
     "@selfxyz/qrcode": "^1.0.17",
+    "@solana/kit": "^3.0.3",
     "@tanstack/react-query": "^5.90.12",
     "@walletconnect/ethereum-provider": "^2.21.10",
     "ethers": "^6.16.0",
