@@ -39,7 +39,7 @@ export function useNgoRegistration() {
     const initProvider = async () => {
       if (typeof window !== 'undefined' && window.ethereum) {
         try {
-          const provider = new BrowserProvider(window.ethereum);
+          const provider = new BrowserProvider(window.ethereum as any);
           setProvider(provider);
           
           const accounts = await provider.listAccounts();
