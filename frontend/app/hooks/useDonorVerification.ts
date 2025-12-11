@@ -19,7 +19,8 @@ export function useDonorVerification() {
     const initProvider = async () => {
       if (typeof window !== 'undefined' && window.ethereum) {
         try {
-          const provider = new BrowserProvider(window.ethereum as any);
+          const ethereum = window.ethereum as any;
+          const provider = new BrowserProvider(ethereum);
           setProvider(provider);
           
           const accounts = await provider.listAccounts();
@@ -31,7 +32,7 @@ export function useDonorVerification() {
             setIsConnected(false);
           }
 
-          window.ethereum.on('accountsChanged', async (accounts: string[]) => {
+          ethereum.on('accountsChanged', async (accounts: string[]) => {
             if (accounts.length > 0) {
               setAddress(accounts[0]);
               setIsConnected(true);
@@ -41,7 +42,7 @@ export function useDonorVerification() {
             }
           });
 
-          window.ethereum.on('chainChanged', () => {
+          ethereum.on('chainChanged', () => {
             window.location.reload();
           });
         } catch (error) {
