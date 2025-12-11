@@ -10,6 +10,7 @@ import { formatEther, parseUnits } from 'ethers';
 import { countries, SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qrcode';
 import { NGORegistryContract } from '../abi';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
+import { useDonorVerification } from '../hooks/useDonorVerification';
 import { processSelfProtocolResult } from '../utils/selfProtocol';
 
 interface VerificationModalProps {
@@ -73,6 +74,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     isConnected,
     stagingMode
   } = useNgoRegistration();
+  const { isDonorVerified, isChecking: isCheckingDonor } = useDonorVerification();
 
   const router = useRouter();
   
@@ -303,6 +305,13 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
 
+  // Check if user is verified as donor - prevent NGO registration
+  useEffect(() => {
+    if (isOpen && isConnected && !isCheckingDonor && isDonorVerified) {
+      setErrorMessage('You are verified as a donor. Donors cannot register as NGOs. You can only be either an NGO or a donor, not both.');
+    }
+  }, [isOpen, isConnected, isCheckingDonor, isDonorVerified]);
+
   // Handle NGO registration
   const handleRegisterNGO = async () => {
     console.log('🔍 Register NGO clicked. State:', {
@@ -312,7 +321,14 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
       isApprovalSuccess,
       isLoading,
       isUploading,
+      isDonorVerified,
     });
+
+    // Check if user is verified as donor
+    if (isDonorVerified) {
+      setErrorMessage('You are verified as a donor. Donors cannot register as NGOs. You can only be either an NGO or a donor, not both.');
+      return;
+    }
 
     if (!ipfsProfile || ipfsProfile.trim().length === 0) {
       setErrorMessage('Please upload an image for your NGO profile');

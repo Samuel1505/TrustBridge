@@ -281,54 +281,105 @@ export default function DonorVerificationModal({ isOpen, onClose, onVerified }: 
 
           {/* Content */}
           <div className="p-6">
-            {step === 'intro' && (
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-800">{errorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 1: Connect Wallet */}
+            {currentStep === 1 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
+                className="text-center py-8"
               >
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">Why verify?</h3>
-                  <ul className="space-y-2 text-sm text-blue-800">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <span>Access verified NGOs</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <span>Make secure donations</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <span>Track your donations</span>
-                    </li>
-                  </ul>
+                <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Wallet className="w-10 h-10 text-emerald-600" />
                 </div>
-
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h3>
+                <p className="text-gray-600 mb-8">
+                  Connect your Celo wallet to start the donor verification process
+                </p>
                 {!isConnected ? (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-600 text-center">
-                      Please connect your wallet first
-                    </p>
-                    <button
-                      onClick={open}
-                      className="w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg"
-                    >
-                      Connect Wallet
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleConnectWallet}
+                    className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg"
+                  >
+                    Connect Wallet
+                  </button>
                 ) : (
                   <div className="space-y-4">
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
                       <p className="text-sm text-emerald-800">
                         ✅ Connected: {address?.substring(0, 6)}...{address?.substring(address.length - 4)}
                       </p>
+                      {isNgoRegistered && (
+                        <p className="text-sm text-red-800 mt-2">
+                          ⚠️ You are registered as an NGO. NGOs cannot verify as donors.
+                        </p>
+                      )}
+                    </div>
+                    {!isNgoRegistered && (
+                      <button
+                        onClick={handleNextStep}
+                        disabled={isChecking}
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 mx-auto disabled:opacity-50"
+                      >
+                        Continue
+                        {!isChecking && <CheckCircle className="w-5 h-5" />}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 2: Self Protocol Verification */}
+            {currentStep === 2 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-6"
+              >
+                {verificationStep === 'intro' && (
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Shield className="w-10 h-10 text-blue-600" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Identity Verification</h3>
+                      <p className="text-gray-600">
+                        Verify your identity using Self Protocol's zero-knowledge proofs
+                      </p>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">Why verify?</h4>
+                      <ul className="space-y-2 text-sm text-blue-800">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span>Access verified NGOs</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span>Make secure donations</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span>Track your donations</span>
+                        </li>
+                      </ul>
                     </div>
 
                     <div className="flex gap-4">
                       <button
                         onClick={() => handleStartVerification('desktop')}
-                        disabled={!selfApp}
+                        disabled={!selfApp || isNgoRegistered}
                         className="flex-1 px-6 py-4 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-3"
                       >
                         <Monitor className="h-5 w-5" />
@@ -340,7 +391,7 @@ export default function DonorVerificationModal({ isOpen, onClose, onVerified }: 
 
                       <button
                         onClick={() => handleStartVerification('mobile')}
-                        disabled={!selfApp || !universalLink}
+                        disabled={!selfApp || !universalLink || isNgoRegistered}
                         className="flex-1 px-6 py-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-3"
                       >
                         <Smartphone className="h-5 w-5" />
@@ -350,84 +401,91 @@ export default function DonorVerificationModal({ isOpen, onClose, onVerified }: 
                         </div>
                       </button>
                     </div>
+
+                    <button
+                      onClick={handlePrevStep}
+                      className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
+                    >
+                      ← Back
+                    </button>
                   </div>
+                )}
+
+                {/* QR Code Step */}
+                {verificationStep === 'qrcode' && selfApp && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-4"
+                  >
+                    <div className="bg-gray-50 rounded-lg p-4 text-center">
+                      <p className="text-sm font-medium text-gray-900 mb-2">
+                        Scan with Self App
+                      </p>
+                      <p className="text-xs text-gray-600 mb-4">
+                        Use your phone's Self app to scan this QR code
+                      </p>
+                      
+                      <div className="flex justify-center bg-white rounded-xl p-4">
+                        <SelfQRcodeWrapper
+                          selfApp={selfApp}
+                          onSuccess={handleSuccessfulVerification}
+                          onError={handleVerificationError}
+                          size={280}
+                          darkMode={false}
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setVerificationStep('intro')}
+                      className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
+                    >
+                      ← Back
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* Mobile Step */}
+                {verificationStep === 'mobile' && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-4"
+                  >
+                    <div className="text-center py-6">
+                      <div className="h-16 w-16 bg-gradient-to-br from-emerald-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Smartphone className="h-8 w-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Open Self App
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-6">
+                        Complete verification directly in your Self mobile app
+                      </p>
+
+                      <button
+                        onClick={openSelfApp}
+                        disabled={!universalLink}
+                        className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50"
+                      >
+                        Open Self App
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setVerificationStep('intro')}
+                      className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
+                    >
+                      ← Back
+                    </button>
+                  </motion.div>
                 )}
               </motion.div>
             )}
 
-            {/* QR Code Step */}
-            {step === 'qrcode' && selfApp && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-4"
-              >
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <p className="text-sm font-medium text-gray-900 mb-2">
-                    Scan with Self App
-                  </p>
-                  <p className="text-xs text-gray-600 mb-4">
-                    Use your phone's Self app to scan this QR code
-                  </p>
-                  
-                  <div className="flex justify-center bg-white rounded-xl p-4">
-                    <SelfQRcodeWrapper
-                      selfApp={selfApp}
-                      onSuccess={handleSuccessfulVerification}
-                      onError={handleVerificationError}
-                      size={280}
-                      darkMode={false}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setStep('intro')}
-                  className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
-                >
-                  ← Back
-                </button>
-              </motion.div>
-            )}
-
-            {/* Mobile Step */}
-            {step === 'mobile' && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-4"
-              >
-                <div className="text-center py-6">
-                  <div className="h-16 w-16 bg-gradient-to-br from-emerald-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Smartphone className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Open Self App
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-6">
-                    Complete verification directly in your Self mobile app
-                  </p>
-
-                  <button
-                    onClick={openSelfApp}
-                    disabled={!universalLink}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50"
-                  >
-                    Open Self App
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setStep('intro')}
-                  className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 underline"
-                >
-                  ← Back
-                </button>
-              </motion.div>
-            )}
-
-            {/* Success Step */}
-            {step === 'success' && (
+            {/* Step 3: Success */}
+            {currentStep === 3 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -437,43 +495,8 @@ export default function DonorVerificationModal({ isOpen, onClose, onVerified }: 
                   <CheckCircle className="h-10 w-10 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Verification Successful!</h3>
-                <p className="text-sm text-gray-600">Redirecting to browse NGOs...</p>
+                <p className="text-sm text-gray-600">You can now browse and donate to verified NGOs</p>
                 <Loader2 className="w-6 h-6 text-emerald-600 animate-spin mx-auto mt-4" />
-              </motion.div>
-            )}
-
-            {/* Error Step */}
-            {step === 'error' && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-4"
-              >
-                <div className="text-center py-4">
-                  <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="h-10 w-10 text-red-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Verification Failed</h3>
-                  <p className="text-sm text-gray-600">{errorMessage}</p>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setStep('intro');
-                      setErrorMessage('');
-                    }}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all"
-                  >
-                    Try Again
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-all"
-                  >
-                    Close
-                  </button>
-                </div>
               </motion.div>
             )}
           </div>
