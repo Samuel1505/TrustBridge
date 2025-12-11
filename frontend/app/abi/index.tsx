@@ -2,8 +2,15 @@ import NGORegistry from "./NGORegistry.json";
 import DonationRouter from "./DonationRouter.json";
 
 // Extract ABI from Hardhat artifact (it has an 'abi' property)
-const ngoRegistryAbi = Array.isArray(NGORegistry) ? NGORegistry : (NGORegistry.abi || NGORegistry);
-const donationRouterAbi = Array.isArray(DonationRouter) ? DonationRouter : (DonationRouter.abi || DonationRouter);
+// Type assertion to handle JSON imports
+const ngoRegistryAbi = Array.isArray(NGORegistry) 
+  ? NGORegistry 
+  : ((NGORegistry as any).abi || NGORegistry);
+  
+// DonationRouter.json is an array (ABI), not an object
+const donationRouterAbi = Array.isArray(DonationRouter) 
+  ? DonationRouter 
+  : ((DonationRouter as any)?.abi || DonationRouter);
 
 export const NGORegistryContract = {
     abi: ngoRegistryAbi,

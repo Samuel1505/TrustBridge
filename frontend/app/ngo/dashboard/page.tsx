@@ -22,7 +22,7 @@ import { Contract, BrowserProvider } from 'ethers';
 import { NGORegistryContract } from '../../abi';
 
 export default function NGODashboardPage() {
-  const { address, isConnected, isRegistered } = useNgoRegistration();
+  const { address, isConnected } = useNgoRegistration();
   const { open } = useAppKit();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -40,11 +40,11 @@ export default function NGODashboardPage() {
       try {
         // Get provider from window.ethereum
         if (typeof window !== 'undefined' && window.ethereum) {
-          const provider = new BrowserProvider(window.ethereum);
+          const provider = new BrowserProvider(window.ethereum as any);
           
           // Check if we're on the correct network
           const network = await provider.getNetwork();
-          const expectedChainId = 11155711n; // Celo Sepolia
+          const expectedChainId = BigInt(11142220); // Celo Sepolia
           if (network.chainId !== expectedChainId) {
             console.warn(`Wrong network. Expected ${expectedChainId}, got ${network.chainId}`);
             setNgo(null);
@@ -57,8 +57,33 @@ export default function NGODashboardPage() {
             NGORegistryContract.abi,
             provider
           );
-          const ngoData = await contract.ngoByWallet(address);
-          setNgo(ngoData);
+          
+          // Fetch NGO data directly - we'll check isActive separately
+          // This allows us to show dashboard even if VC is expired (user can renew)
+          try {
+            const ngoData = await contract.ngoByWallet(address);
+            // Check if the NGO exists and is active
+            if (ngoData && ngoData.isActive === true) {
+              console.log('✅ NGO data fetched:', {
+                isActive: ngoData.isActive,
+                registeredAt: ngoData.registeredAt?.toString(),
+                ipfsProfile: ngoData.ipfsProfile,
+                vcExpiryDate: ngoData.vcExpiryDate?.toString()
+              });
+              setNgo(ngoData);
+            } else {
+              console.log('⚠️ NGO data exists but is not active');
+              setNgo(null);
+            }
+          } catch (fetchError: any) {
+            // If the call fails, user is likely not registered
+            if (fetchError?.code === 'CALL_EXCEPTION') {
+              console.log('⚠️ User is not registered (contract call exception)');
+              setNgo(null);
+            } else {
+              throw fetchError; // Re-throw non-call-exception errors
+            }
+          }
         }
       } catch (error: any) {
         // Only log non-RPC errors to avoid console spam
@@ -74,25 +99,44 @@ export default function NGODashboardPage() {
     fetchNgoData();
   }, [address, isConnected]);
 
+  // Determine if user is registered based on local NGO data
+  // Only consider registered if we have NGO data AND it's active
+  const isUserRegistered = ngo !== null && ngo !== undefined && ngo.isActive === true;
+
+  // Handle wallet connection and registration state
   useEffect(() => {
-    if (!isConnected) {
-      // Open wallet connection modal
-      open();
-    } else if (isConnected && !isLoadingNgo) {
-      if (!isRegistered) {
-        // If not registered, redirect to home after a short delay
-        console.log('User is not registered, redirecting to home');
-        setTimeout(() => {
-          router.push('/');
-        }, 1000);
-      } else {
+    // Only check registration status after we've finished loading NGO data
+    // and we have a connected wallet
+    if (isConnected && !isLoadingNgo && address) {
+      if (isUserRegistered) {
         // User is registered, show dashboard
+        console.log('✅ User is registered, showing dashboard');
+        console.log('NGO data:', {
+          isActive: ngo?.isActive,
+          registeredAt: ngo?.registeredAt?.toString(),
+          ipfsProfile: ngo?.ipfsProfile
+        });
         setIsLoading(false);
+      } else {
+        // If not registered, redirect to home after a short delay
+        // This gives time for any pending state updates
+        console.log('⚠️ User is not registered, will redirect to home');
+        console.log('NGO data state:', ngo);
+        const redirectTimer = setTimeout(() => {
+          // Double-check before redirecting
+          if (!isUserRegistered) {
+            router.push('/');
+          }
+        }, 2000);
+        
+        return () => clearTimeout(redirectTimer);
       }
     }
-  }, [isConnected, isLoadingNgo, isRegistered, router, open]);
+  }, [isConnected, isLoadingNgo, isUserRegistered, ngo, address, router]);
 
-  if (!isConnected || isLoading || isLoadingNgo) {
+
+  // Show loading state while checking connection and registration
+  if (isLoading || isLoadingNgo) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -103,8 +147,40 @@ export default function NGODashboardPage() {
     );
   }
 
-  if (!isRegistered) {
-    return null; // Will redirect
+  // Show connection prompt if not connected
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <AlertCircle className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Wallet Not Connected</h2>
+            <p className="text-gray-600 mb-6">
+              Please connect your wallet to access the NGO dashboard.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => open()}
+                className="w-full px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
+              >
+                Connect Wallet
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Go Back Home
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not registered (will redirect)
+  if (!isUserRegistered) {
+    return null;
   }
 
   // Format dates
@@ -151,7 +227,7 @@ export default function NGODashboardPage() {
               <button
                 onClick={() => {
                   if (typeof window !== 'undefined' && window.ethereum) {
-                    window.ethereum.request({ method: 'eth_requestAccounts' });
+                    (window.ethereum as any).request({ method: 'eth_requestAccounts' });
                   }
                 }}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"

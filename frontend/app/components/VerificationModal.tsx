@@ -10,6 +10,7 @@ import { formatEther, parseUnits } from 'ethers';
 import { countries, SelfQRcodeWrapper, SelfAppBuilder, getUniversalLink } from '@selfxyz/qrcode';
 import { NGORegistryContract } from '../abi';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
+import { useDonorVerification } from '../hooks/useDonorVerification';
 import { processSelfProtocolResult } from '../utils/selfProtocol';
 
 interface VerificationModalProps {
@@ -71,8 +72,8 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     error: registrationError,
     address,
     isConnected,
-    stagingMode
   } = useNgoRegistration();
+  const { isDonorVerified, isChecking: isCheckingDonor } = useDonorVerification();
 
   const router = useRouter();
   
@@ -207,7 +208,7 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
   };
 
   // Handle verification error
-  const handleVerificationError = (data?: { error_code?: string; reason?: string; status?: string }) => {
+  const handleVerificationError = (data?: { error_code?: string; reason?: string; status?: string; message?: string } | string) => {
     console.error('❌ Verification failed:', data);
     
     // Extract error message from various possible formats
@@ -303,10 +304,44 @@ export default function VerificationModal({ isOpen, onClose }: VerificationModal
     }
   };
 
+  // Check if user is verified as donor - prevent NGO registration
+  useEffect(() => {
+    if (isOpen && isConnected && !isCheckingDonor && isDonorVerified) {
+      setErrorMessage('You are verified as a donor. Donors cannot register as NGOs. You can only be either an NGO or a donor, not both.');
+    }
+  }, [isOpen, isConnected, isCheckingDonor, isDonorVerified]);
+
   // Handle NGO registration
   const handleRegisterNGO = async () => {
+    console.log('🔍 Register NGO clicked. State:', {
+      ipfsProfile,
+      hasEnoughBalance,
+      needsApproval,
+      isApprovalSuccess,
+      isLoading,
+      isUploading,
+      isDonorVerified,
+    });
+
+    // Check if user is verified as donor
+    if (isDonorVerified) {
+      setErrorMessage('You are verified as a donor. Donors cannot register as NGOs. You can only be either an NGO or a donor, not both.');
+      return;
+    }
+
     if (!ipfsProfile || ipfsProfile.trim().length === 0) {
       setErrorMessage('Please upload an image for your NGO profile');
+      return;
+    }
+
+    // Check balance and approval - show error if not ready
+    if (hasEnoughBalance === false) {
+      setErrorMessage('Insufficient cUSD balance. You need at least 1 cUSD to register.');
+      return;
+    }
+
+    if (needsApproval) {
+      setErrorMessage('Please approve cUSD spending first. You need to approve 1 cUSD for the registration fee.');
       return;
     }
 

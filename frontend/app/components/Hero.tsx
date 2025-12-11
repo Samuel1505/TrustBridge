@@ -8,14 +8,18 @@ import Link from 'next/link';
 import VerificationModal from './VerificationModal';
 import DonorVerificationModal from './DonorVerificationModal';
 import { useNgoRegistration } from '../hooks/useNgoRegistration';
+import { useDonorVerification } from '../hooks/useDonorVerification';
 
 export default function Hero() {
   const [isNgoModalOpen, setIsNgoModalOpen] = useState(false);
   const [isDonorModalOpen, setIsDonorModalOpen] = useState(false);
   const router = useRouter();
   
-  // Use the registration hook to check if user is registered
-  const { isRegistered, address, isConnected, isCheckingRegistration } = useNgoRegistration();
+  // Use the registration hook to check if user is registered as NGO
+  const { isRegistered, address, isConnected, isLoading } = useNgoRegistration();
+  
+  // Use the donor verification hook to check if user is verified as donor
+  const { isDonorVerified, isChecking: isCheckingDonor } = useDonorVerification();
   
   // Handle "Register as NGO" button - redirect if already registered
   const handleRegisterNGO = () => {
@@ -26,10 +30,24 @@ export default function Hero() {
     }
   };
   
+  // Handle "Verify as Donor" button - redirect if already verified
+  const handleVerifyDonor = () => {
+    if (isDonorVerified) {
+      // Redirect to browse NGOs page (you may need to create this page)
+      router.push('/');
+    } else {
+      setIsDonorModalOpen(true);
+    }
+  };
+  
   // Don't show button text until we've checked registration status
-  const buttonText = isCheckingRegistration 
+  const ngoButtonText = isLoading 
     ? 'Checking...' 
     : (isRegistered ? 'Go to Dashboard' : 'Register as NGO');
+  
+  const donorButtonText = isCheckingDonor
+    ? 'Checking...'
+    : (isDonorVerified ? 'Browse NGOs' : 'Verify as Donor');
 
   // Auto-redirect if user becomes registered (e.g., after successful registration)
   useEffect(() => {
@@ -60,21 +78,51 @@ export default function Hero() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
-              <button 
-                onClick={handleRegisterNGO}
-                disabled={isCheckingRegistration}
-                className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {buttonText}
-                {!isCheckingRegistration && <ArrowRight className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={() => setIsDonorModalOpen(true)}
-                className="px-8 py-4 bg-white text-emerald-600 border-2 border-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition-all flex items-center gap-2 justify-center"
-              >
-                Verify as Donor
-                <CheckCircle2 className="w-5 h-5" />
-              </button>
+              {/* Show NGO button only if not verified as donor */}
+              {!isDonorVerified && (
+                <button 
+                  onClick={handleRegisterNGO}
+                  disabled={isLoading}
+                  className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {ngoButtonText}
+                  {!isLoading && <ArrowRight className="w-5 h-5" />}
+                </button>
+              )}
+              
+              {/* Show Donor button only if not registered as NGO */}
+              {!isRegistered && (
+                <button
+                  onClick={handleVerifyDonor}
+                  disabled={isCheckingDonor}
+                  className="px-8 py-4 bg-white text-emerald-600 border-2 border-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition-all flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {donorButtonText}
+                  {!isCheckingDonor && <CheckCircle2 className="w-5 h-5" />}
+                </button>
+              )}
+              
+              {/* If user is registered as NGO, show dashboard button */}
+              {isRegistered && (
+                <button 
+                  onClick={() => router.push('/ngo/dashboard')}
+                  className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 justify-center"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              )}
+              
+              {/* If user is verified as donor, show browse button */}
+              {isDonorVerified && !isRegistered && (
+                <button
+                  onClick={() => router.push('/')}
+                  className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2 justify-center"
+                >
+                  Browse NGOs
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              )}
             </div>
 
             <div className="space-y-4">
