@@ -53,7 +53,7 @@ export function useNgoRegistration() {
             setSigner(null);
           }
 
-          window.ethereum.on('accountsChanged', async (accounts: string[]) => {
+          (window.ethereum as any).on('accountsChanged', async (accounts: string[]) => {
             if (accounts.length > 0) {
               setAddress(accounts[0]);
               setIsConnected(true);
@@ -68,7 +68,7 @@ export function useNgoRegistration() {
             setBalance(null);
           });
 
-          window.ethereum.on('chainChanged', () => {
+          (window.ethereum as any).on('chainChanged', () => {
             window.location.reload();
           });
         } catch (error) {
@@ -90,7 +90,7 @@ export function useNgoRegistration() {
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11142220n) {
+        if (network.chainId !== BigInt(11142220)) {
           setNgoData(null);
           return;
         }
@@ -127,7 +127,7 @@ export function useNgoRegistration() {
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11142220n) {
+        if (network.chainId !== BigInt(11142220)) {
           setAllowance(null);
           return;
         }
@@ -168,7 +168,7 @@ export function useNgoRegistration() {
 
       try {
         const network = await provider.getNetwork();
-        if (network.chainId !== 11142220n) {
+        if (network.chainId !== BigInt(11142220)) {
           setBalance(null);
           return;
         }
