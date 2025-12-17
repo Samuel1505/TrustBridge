@@ -8,6 +8,7 @@ import { useAppKit } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
 import { useDonation } from '../hooks/useDonation';
 import { formatEther } from 'ethers';
+import { DonationRouterContract } from '../abi';
 
 interface DonationModalProps {
   isOpen: boolean;
