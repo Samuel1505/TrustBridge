@@ -125,10 +125,11 @@ export default function DashboardPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center"
+                className="bg-white rounded-2xl shadow-sm border border-red-200 p-12 text-center"
               >
-                <p className="text-xl text-red-600">Error loading NGOs</p>
-                <p className="text-gray-500 mt-2">{error}</p>
+                <p className="text-xl text-red-600 font-semibold mb-2">Error loading NGOs</p>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <p className="text-sm text-gray-500">Please make sure your wallet is connected to Celo Sepolia</p>
               </motion.div>
             ) : filteredAndSortedNGOs.length === 0 ? (
               <motion.div
