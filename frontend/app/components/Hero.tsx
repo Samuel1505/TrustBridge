@@ -33,8 +33,8 @@ export default function Hero() {
   // Handle "Verify as Donor" button - redirect if already verified
   const handleVerifyDonor = () => {
     if (isDonorVerified) {
-      // Redirect to browse NGOs page (you may need to create this page)
-      router.push('/');
+      // Redirect to donor dashboard
+      router.push('/donor/dashboard');
     } else {
       setIsDonorModalOpen(true);
     }

@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, MapPin, CheckCircle2, Calendar, Users, DollarSign, ExternalLink, Mail, Globe, Heart } from 'lucide-react';
 import Link from 'next/link';
-import { mockNGOs } from '../../data/mockNGOs';
 import DonationModal from '../../components/DonationModal';
 import { useParams } from 'next/navigation';
+import { useNGO } from '../../hooks/useNGOs';
 
 const countryFlags: Record<string, string> = {
   KE: '🇰🇪',
@@ -21,14 +21,25 @@ export default function NGOProfilePage() {
   const params = useParams();
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
+  const ngoAddress = params.id as string;
+  const { ngo, isLoading, error } = useNGO(ngoAddress);
 
-  const ngo = mockNGOs.find((n) => n.id === params.id);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl text-gray-600">Loading NGO data...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!ngo) {
+  if (error || !ngo) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">NGO Not Found</h1>
+          <p className="text-gray-600 mb-4">{error || 'This NGO does not exist or is not verified'}</p>
           <Link href="/dashboard" className="text-emerald-600 hover:text-emerald-700">
             Back to Dashboard
           </Link>
@@ -36,6 +47,25 @@ export default function NGOProfilePage() {
       </div>
     );
   }
+
+  const ngoData = {
+    id: ngo.address,
+    name: ngo.name || `NGO ${ngo.address.slice(0, 6)}...${ngo.address.slice(-4)}`,
+    mission: ngo.mission || '',
+    description: ngo.description || '',
+    email: ngo.email || '',
+    website: ngo.website,
+    logo: ngo.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(ngo.name || ngo.address)}&background=10b981&color=fff&size=400`,
+    images: ngo.images || [],
+    country: ngo.founderCountry || 'Unknown',
+    countryCode: ngo.founderCountry || 'UN',
+    verified: ngo.isActive,
+    verificationDate: new Date(Number(ngo.registeredAt) * 1000).toISOString(),
+    founderAddress: ngo.address,
+    totalDonations: parseFloat((ngo.totalDonationsReceived / BigInt(1e18)).toString()),
+    donorCount: Number(ngo.donorCount),
+    recentDonations: [],
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -67,30 +97,30 @@ export default function NGOProfilePage() {
             >
               <div className="flex items-start gap-6">
                 <img
-                  src={ngo.logo}
-                  alt={ngo.name}
+                  src={ngoData.logo}
+                  alt={ngoData.name}
                   className="w-24 h-24 rounded-2xl object-cover shadow-lg"
                 />
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h1 className="text-3xl font-bold text-gray-900 mb-2">{ngo.name}</h1>
+                      <h1 className="text-3xl font-bold text-gray-900 mb-2">{ngoData.name}</h1>
                       <div className="flex items-center gap-4 text-gray-600">
                         <span className="flex items-center gap-2">
                           <MapPin className="w-4 h-4" />
-                          <span className="text-lg">{countryFlags[ngo.countryCode]}</span>
-                          {ngo.country}
+                          <span className="text-lg">{countryFlags[ngoData.countryCode] || '🌍'}</span>
+                          {ngoData.country}
                         </span>
                       </div>
                     </div>
-                    {ngo.verified && (
+                    {ngoData.verified && (
                       <div className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full flex items-center gap-2 font-semibold">
                         <CheckCircle2 className="w-5 h-5" />
                         Verified
                       </div>
                     )}
                   </div>
-                  <p className="text-xl text-gray-700 font-medium">{ngo.mission}</p>
+                  <p className="text-xl text-gray-700 font-medium">{ngoData.mission}</p>
                 </div>
               </div>
             </motion.div>
@@ -104,34 +134,41 @@ export default function NGOProfilePage() {
             >
               <h2 className="text-xl font-bold text-gray-900 mb-4">Gallery</h2>
               <div className="space-y-4">
-                <div className="aspect-video rounded-xl overflow-hidden">
-                  <img
-                    src={ngo.images[selectedImage]}
-                    alt={`${ngo.name} - Image ${selectedImage + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {ngo.images.map((image, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedImage(index)}
-                      className={`aspect-video rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedImage === index
-                          ? 'border-emerald-600 scale-105'
-                          : 'border-transparent hover:border-gray-300'
-                      }`}
-                    >
+                {ngoData.images.length > 0 ? (
+                  <>
+                    <div className="aspect-video rounded-xl overflow-hidden">
                       <img
-                        src={image}
-                        alt={`Thumbnail ${index + 1}`}
+                        src={ngoData.images[selectedImage]}
+                        alt={`${ngoData.name} - Image ${selectedImage + 1}`}
                         className="w-full h-full object-cover"
                       />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {ngoData.images.map((image, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedImage(index)}
+                          className={`aspect-video rounded-lg overflow-hidden border-2 transition-all ${
+                            selectedImage === index
+                              ? 'border-emerald-600 scale-105'
+                              : 'border-transparent hover:border-gray-300'
+                          }`}
+                        >
+                          <img
+                            src={image}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="aspect-video rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
+                    <p className="text-gray-400">No images available</p>
+                  </div>
+                )}
+              </motion.div>
 
             {/* Description */}
             <motion.div
@@ -142,12 +179,12 @@ export default function NGOProfilePage() {
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Organization</h2>
               <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {ngo.description}
+                {ngoData.description || 'No description available.'}
               </p>
             </motion.div>
 
             {/* Recent Donations */}
-            {ngo.recentDonations.length > 0 && (
+            {ngoData.recentDonations.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -156,7 +193,7 @@ export default function NGOProfilePage() {
               >
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Donations</h2>
                 <div className="space-y-4">
-                  {ngo.recentDonations.map((donation) => (
+                  {ngoData.recentDonations.map((donation) => (
                     <div
                       key={donation.id}
                       className="flex items-start justify-between p-4 bg-gray-50 rounded-xl"
@@ -167,7 +204,7 @@ export default function NGOProfilePage() {
                             {donation.donor}
                           </span>
                           <a
-                            href={`https://explorer.celo.org/alfajores/tx/${donation.txHash}`}
+                            href={`https://sepolia.celoscan.io/tx/${donation.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-emerald-600 hover:text-emerald-700"
@@ -233,7 +270,7 @@ export default function NGOProfilePage() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
-                      ${ngo.totalDonations.toLocaleString()}
+                      ${ngoData.totalDonations.toLocaleString()}
                     </p>
                     <p className="text-sm text-gray-600">Total Raised</p>
                   </div>
@@ -243,7 +280,7 @@ export default function NGOProfilePage() {
                     <Users className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{ngo.donorCount}</p>
+                    <p className="text-2xl font-bold text-gray-900">{ngoData.donorCount}</p>
                     <p className="text-sm text-gray-600">Donors</p>
                   </div>
                 </div>
@@ -253,7 +290,7 @@ export default function NGOProfilePage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {new Date(ngo.verificationDate).toLocaleDateString()}
+                      {new Date(ngoData.verificationDate).toLocaleDateString()}
                     </p>
                     <p className="text-sm text-gray-600">Verified Since</p>
                   </div>
@@ -262,34 +299,36 @@ export default function NGOProfilePage() {
             </motion.div>
 
             {/* Contact Card */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
-            >
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Contact Information</h3>
-              <div className="space-y-3">
-                <a
-                  href={`mailto:${ngo.email}`}
-                  className="flex items-center gap-3 text-gray-700 hover:text-emerald-600 transition-colors"
-                >
-                  <Mail className="w-5 h-5" />
-                  <span className="text-sm">{ngo.email}</span>
-                </a>
-                {ngo.website && (
+            {ngoData.email && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
+              >
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Contact Information</h3>
+                <div className="space-y-3">
                   <a
-                    href={ngo.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`mailto:${ngoData.email}`}
                     className="flex items-center gap-3 text-gray-700 hover:text-emerald-600 transition-colors"
                   >
-                    <Globe className="w-5 h-5" />
-                    <span className="text-sm">{ngo.website}</span>
+                    <Mail className="w-5 h-5" />
+                    <span className="text-sm">{ngoData.email}</span>
                   </a>
-                )}
-              </div>
-            </motion.div>
+                  {ngoData.website && (
+                    <a
+                      href={ngoData.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 text-gray-700 hover:text-emerald-600 transition-colors"
+                    >
+                      <Globe className="w-5 h-5" />
+                      <span className="text-sm">{ngoData.website}</span>
+                    </a>
+                  )}
+                </div>
+              </motion.div>
+            )}
 
             {/* Wallet Address */}
             <motion.div
@@ -301,7 +340,7 @@ export default function NGOProfilePage() {
               <h3 className="text-lg font-bold text-gray-900 mb-3">Wallet Address</h3>
               <div className="bg-gray-50 rounded-xl p-3">
                 <p className="font-mono text-xs text-gray-700 break-all">
-                  {ngo.founderAddress}
+                  {ngoData.founderAddress}
                 </p>
               </div>
             </motion.div>
@@ -312,8 +351,8 @@ export default function NGOProfilePage() {
       <DonationModal
         isOpen={isDonationModalOpen}
         onClose={() => setIsDonationModalOpen(false)}
-        ngoName={ngo.name}
-        ngoAddress={ngo.founderAddress}
+        ngoName={ngoData.name}
+        ngoAddress={ngoData.founderAddress}
       />
     </div>
   );

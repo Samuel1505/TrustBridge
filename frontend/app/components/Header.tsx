@@ -41,6 +41,9 @@ export default function Header() {
             <Link href="/dashboard" className={`transition-colors font-medium ${pathname === '/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}>
               Browse NGOs
             </Link>
+            <Link href="/donor/dashboard" className={`transition-colors font-medium ${pathname === '/donor/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}>
+              My Dashboard
+            </Link>
             <Link href="/profile/create" className={`transition-colors font-medium ${pathname === '/profile/create' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}>
               Register NGO
             </Link>
@@ -93,6 +96,13 @@ export default function Header() {
                 className={`transition-colors font-medium py-2 ${pathname === '/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}
               >
                 Browse NGOs
+              </Link>
+              <Link
+                href="/donor/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`transition-colors font-medium py-2 ${pathname === '/donor/dashboard' ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600'}`}
+              >
+                My Dashboard
               </Link>
               <Link
                 href="/profile/create"

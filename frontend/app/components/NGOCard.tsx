@@ -54,7 +54,7 @@ export default function NGOCard({ ngo, index = 0 }: NGOCardProps) {
             <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
               <MapPin className="w-4 h-4" />
               <span className="flex items-center gap-1">
-                <span className="text-lg">{countryFlags[ngo.countryCode]}</span>
+                <span className="text-lg">{countryFlags[ngo.countryCode] || '🌍'}</span>
                 {ngo.country}
               </span>
             </div>

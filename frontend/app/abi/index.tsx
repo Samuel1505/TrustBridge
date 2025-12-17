@@ -14,10 +14,10 @@ const donationRouterAbi = Array.isArray(DonationRouter)
 
 export const NGORegistryContract = {
     abi: ngoRegistryAbi,
-    address: "0x4D47d268F5BdBd8926efa86C5205185550b9178d"
+    address: "0x8AE49C5d7c0718467Eae6492BE15222EA67a589A"
 }
 
 export const DonationRouterContract = {
     abi: donationRouterAbi,
-    address: "0x875CbF85A375a573645a475Fe9daD9678FA24625"
+    address: "0x991F9bd25201504c3988454B32fA9Fa1a8535fBC"
 }

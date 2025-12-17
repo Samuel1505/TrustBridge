@@ -13,7 +13,7 @@ export default function DonationSuccessPage() {
   const ngoName = searchParams.get('ngo') || 'NGO';
   const [copied, setCopied] = useState(false);
 
-  const explorerUrl = `https://explorer.celo.org/alfajores/tx/${txHash}`;
+  const explorerUrl = `https://sepolia.celoscan.io/tx/${txHash}`;
   const shareText = `I just donated $${amount} cUSD to ${ngoName} on TrustBridge! 🌍💚`;
 
   const handleCopy = () => {
@@ -178,15 +178,23 @@ export default function DonationSuccessPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="flex flex-col sm:flex-row gap-4 pt-4"
+              className="flex flex-col gap-4 pt-4"
             >
-              <Link href="/dashboard" className="flex-1">
-                <button className="w-full px-8 py-4 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
-                  Donate to Another NGO
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </Link>
-              <Link href="/" className="flex-1">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link href="/dashboard" className="flex-1">
+                  <button className="w-full px-8 py-4 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
+                    Donate to Another NGO
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </Link>
+                <Link href="/donor/dashboard" className="flex-1">
+                  <button className="w-full px-8 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                    View My Dashboard
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </Link>
+              </div>
+              <Link href="/" className="w-full">
                 <button className="w-full px-8 py-4 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:border-emerald-600 hover:text-emerald-600 transition-all">
                   Back to Home
                 </button>
