@@ -130,7 +130,12 @@ export default function DonorDashboardPage() {
               <h3 className="text-lg font-semibold">Donations Made</h3>
             </div>
             <p className="text-4xl font-bold">{stats.donationCount}</p>
-            <p className="text-blue-100 text-sm mt-2">Total contributions</p>
+            <p className="text-blue-100 text-sm mt-2">
+              {stats.donationCount > 0 
+                ? `Avg: $${(stats.totalDonated / stats.donationCount).toFixed(2)}`
+                : 'Total contributions'
+              }
+            </p>
           </motion.div>
 
           <motion.div
