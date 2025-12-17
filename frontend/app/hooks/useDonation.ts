@@ -105,7 +105,9 @@ export function useDonation() {
         signer
       );
 
-      const tx = await donationRouterContract.donate(ngoAddress, amountWei, message);
+      const tx = await donationRouterContract.donate(ngoAddress, amountWei, message, {
+        gasLimit: 300000,
+      });
       setTxHash(tx.hash);
       
       await tx.wait();
