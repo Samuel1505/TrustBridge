@@ -68,16 +68,22 @@ export function useNGOs() {
           try {
             const ngoData: NGOData = await registryContract.getNGO(address);
             
-            // Try to fetch IPFS profile data
+            // Try to fetch IPFS profile data with timeout
             let profileData: any = null;
             if (ngoData.ipfsProfile && ngoData.ipfsProfile !== '') {
               try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                
                 const ipfsUrl = `https://ipfs.io/ipfs/${ngoData.ipfsProfile}`;
-                const response = await fetch(ipfsUrl);
+                const response = await fetch(ipfsUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
                 if (response.ok) {
                   profileData = await response.json();
                 }
               } catch (ipfsError) {
+                // Silently fail - IPFS is optional
                 console.warn(`Failed to fetch IPFS profile for ${address}:`, ipfsError);
               }
             }
