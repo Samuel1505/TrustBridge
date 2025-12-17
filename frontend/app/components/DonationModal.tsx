@@ -1,11 +1,13 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Wallet, Send, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { X, Wallet, Send, Copy, Check, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
+import { useDonation } from '../hooks/useDonation';
+import { formatEther } from 'ethers';
 
 interface DonationModalProps {
   isOpen: boolean;
@@ -18,9 +20,47 @@ export default function DonationModal({ isOpen, onClose, ngoName, ngoAddress }: 
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
   const [copied, setCopied] = useState(false);
-  const { isConnected } = useAccount();
+  const [balance, setBalance] = useState<string>('0');
+  const [needsApproval, setNeedsApproval] = useState(false);
+  const { isConnected, address } = useAccount();
   const { open } = useAppKit();
   const router = useRouter();
+  const { 
+    donate, 
+    approve, 
+    checkBalance, 
+    checkAllowance, 
+    isLoading, 
+    isApproving, 
+    isDonating, 
+    error, 
+    txHash,
+    approvalHash 
+  } = useDonation();
+
+  // Check balance and allowance when amount changes
+  useEffect(() => {
+    const updateBalanceAndAllowance = async () => {
+      if (!isConnected || !address || !amount || parseFloat(amount) <= 0) {
+        setBalance('0');
+        setNeedsApproval(false);
+        return;
+      }
+
+      try {
+        const bal = await checkBalance(address);
+        setBalance(formatEther(bal));
+
+        const allowance = await checkAllowance(address, '0x991F9bd25201504c3988454B32fA9Fa1a8535fBC');
+        const amountWei = BigInt(Math.floor(parseFloat(amount) * 1e18));
+        setNeedsApproval(allowance < amountWei);
+      } catch (err) {
+        console.error('Error checking balance/allowance:', err);
+      }
+    };
+
+    updateBalanceAndAllowance();
+  }, [isConnected, address, amount, checkBalance, checkAllowance]);
 
   const handleCopyAddress = () => {
     navigator.clipboard.writeText(ngoAddress);
@@ -28,11 +68,27 @@ export default function DonationModal({ isOpen, onClose, ngoName, ngoAddress }: 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDonate = () => {
-    // Simulate donation
-    const txHash = '0x' + Math.random().toString(16).substring(2, 42);
-    router.push(`/donation/success?tx=${txHash}&amount=${amount}&ngo=${encodeURIComponent(ngoName)}`);
-    onClose();
+  const handleApprove = async () => {
+    try {
+      await approve(amount);
+      setNeedsApproval(false);
+    } catch (err) {
+      console.error('Approval failed:', err);
+    }
+  };
+
+  const handleDonate = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      return;
+    }
+
+    try {
+      const hash = await donate(ngoAddress, amount, message || '');
+      router.push(`/donation/success?tx=${hash}&amount=${amount}&ngo=${encodeURIComponent(ngoName)}`);
+      onClose();
+    } catch (err) {
+      console.error('Donation failed:', err);
+    }
   };
 
   return (
@@ -202,14 +258,59 @@ export default function DonationModal({ isOpen, onClose, ngoName, ngoAddress }: 
                       </div>
                     )}
 
+                    {/* Error Message */}
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <p className="text-sm text-red-600">{error}</p>
+                      </div>
+                    )}
+
+                    {/* Balance Info */}
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Your Balance</span>
+                        <span className="font-semibold text-gray-900">{parseFloat(balance).toFixed(2)} cUSD</span>
+                      </div>
+                    </div>
+
+                    {/* Approval Step */}
+                    {needsApproval && !approvalHash && (
+                      <button
+                        onClick={handleApprove}
+                        disabled={isApproving || !amount || parseFloat(amount) <= 0}
+                        className="w-full px-8 py-4 bg-amber-600 text-white font-semibold rounded-xl hover:bg-amber-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                      >
+                        {isApproving ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Approving...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-5 h-5" />
+                            Approve cUSD
+                          </>
+                        )}
+                      </button>
+                    )}
+
                     {/* Donate Button */}
                     <button
                       onClick={handleDonate}
-                      disabled={!amount || parseFloat(amount) <= 0}
+                      disabled={!amount || parseFloat(amount) <= 0 || needsApproval || isLoading}
                       className="w-full px-8 py-4 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                     >
-                      <Send className="w-5 h-5" />
-                      Send Donation
+                      {isDonating ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          Send Donation
+                        </>
+                      )}
                     </button>
                   </>
                 )}
