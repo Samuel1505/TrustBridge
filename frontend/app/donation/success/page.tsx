@@ -13,7 +13,7 @@ export default function DonationSuccessPage() {
   const ngoName = searchParams.get('ngo') || 'NGO';
   const [copied, setCopied] = useState(false);
 
-  const explorerUrl = `https://explorer.celo.org/alfajores/tx/${txHash}`;
+  const explorerUrl = `https://sepolia.celoscan.io/tx/${txHash}`;
   const shareText = `I just donated $${amount} cUSD to ${ngoName} on TrustBridge! 🌍💚`;
 
   const handleCopy = () => {
