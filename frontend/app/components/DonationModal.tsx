@@ -166,8 +166,15 @@ export default function DonationModal({ isOpen, onClose, ngoName, ngoAddress }: 
                       <div className="relative">
                         <input
                           type="number"
+                          step="0.01"
+                          min="0.01"
                           value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                              setAmount(value);
+                            }
+                          }}
                           placeholder="0.00"
                           className="w-full px-4 py-4 text-2xl font-bold border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                         />
