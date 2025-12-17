@@ -204,7 +204,7 @@ export default function NGOProfilePage() {
                             {donation.donor}
                           </span>
                           <a
-                            href={`https://explorer.celo.org/alfajores/tx/${donation.txHash}`}
+                            href={`https://sepolia.celoscan.io/tx/${donation.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-emerald-600 hover:text-emerald-700"
