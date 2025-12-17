@@ -51,7 +51,7 @@ export default function DonationModal({ isOpen, onClose, ngoName, ngoAddress }: 
         const bal = await checkBalance(address);
         setBalance(formatEther(bal));
 
-        const allowance = await checkAllowance(address, '0x991F9bd25201504c3988454B32fA9Fa1a8535fBC');
+        const allowance = await checkAllowance(address, DonationRouterContract.address);
         const amountWei = BigInt(Math.floor(parseFloat(amount) * 1e18));
         setNeedsApproval(allowance < amountWei);
       } catch (err) {

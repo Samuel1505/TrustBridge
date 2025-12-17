@@ -56,7 +56,9 @@ export function useDonation() {
       const cUSDContract = new Contract(CUSD_ADDRESS, ERC20_ABI, signer);
       const amountWei = parseUnits(amount, 18);
 
-      const tx = await cUSDContract.approve(DonationRouterContract.address, amountWei);
+      const tx = await cUSDContract.approve(DonationRouterContract.address, amountWei, {
+        gasLimit: 100000,
+      });
       setApprovalHash(tx.hash);
       
       await tx.wait();
