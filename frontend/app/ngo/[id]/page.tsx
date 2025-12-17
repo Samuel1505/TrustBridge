@@ -168,7 +168,8 @@ export default function NGOProfilePage() {
                     <p className="text-gray-400">No images available</p>
                   </div>
                 )}
-              </motion.div>
+              </div>
+            </motion.div>
 
             {/* Description */}
             <motion.div
@@ -184,7 +185,7 @@ export default function NGOProfilePage() {
             </motion.div>
 
             {/* Recent Donations */}
-            {ngoData.recentDonations.length > 0 && (
+            {ngoData.recentDonations && ngoData.recentDonations.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -193,7 +194,7 @@ export default function NGOProfilePage() {
               >
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Donations</h2>
                 <div className="space-y-4">
-                  {ngoData.recentDonations.map((donation) => (
+                  {ngoData.recentDonations.map((donation: any) => (
                     <div
                       key={donation.id}
                       className="flex items-start justify-between p-4 bg-gray-50 rounded-xl"
