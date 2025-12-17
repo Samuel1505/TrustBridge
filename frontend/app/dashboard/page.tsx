@@ -6,15 +6,35 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import NGOCard from '../components/NGOCard';
 import FilterSidebar from '../components/FilterSidebar';
-import { mockNGOs } from '../data/mockNGOs';
+import { useNGOs } from '../hooks/useNGOs';
 
 export default function DashboardPage() {
   const [search, setSearch] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('all');
   const [selectedSort, setSelectedSort] = useState('newest');
+  const { ngos, isLoading, error } = useNGOs();
 
   const filteredAndSortedNGOs = useMemo(() => {
-    let filtered = mockNGOs;
+    if (isLoading || !ngos) return [];
+    
+    let filtered = ngos.map((ngo) => ({
+      id: ngo.address,
+      name: ngo.name || `NGO ${ngo.address.slice(0, 6)}...${ngo.address.slice(-4)}`,
+      mission: ngo.mission || '',
+      description: ngo.description || '',
+      email: ngo.email || '',
+      website: ngo.website,
+      logo: ngo.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(ngo.name || ngo.address)}&background=10b981&color=fff&size=400`,
+      images: ngo.images || [],
+      country: ngo.founderCountry || 'Unknown',
+      countryCode: ngo.founderCountry || 'UN',
+      verified: ngo.isActive,
+      verificationDate: new Date(Number(ngo.registeredAt) * 1000).toISOString(),
+      founderAddress: ngo.address,
+      totalDonations: parseFloat((ngo.totalDonationsReceived / BigInt(1e18)).toString()),
+      donorCount: Number(ngo.donorCount),
+      recentDonations: [],
+    }));
 
     // Filter by search
     if (search) {
@@ -50,7 +70,7 @@ export default function DashboardPage() {
     }
 
     return sorted;
-  }, [search, selectedCountry, selectedSort]);
+  }, [search, selectedCountry, selectedSort, ngos, isLoading]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -93,7 +113,24 @@ export default function DashboardPage() {
 
           {/* NGO Grid */}
           <div className="lg:col-span-3">
-            {filteredAndSortedNGOs.length === 0 ? (
+            {isLoading ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center"
+              >
+                <p className="text-xl text-gray-600">Loading NGOs from blockchain...</p>
+              </motion.div>
+            ) : error ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center"
+              >
+                <p className="text-xl text-red-600">Error loading NGOs</p>
+                <p className="text-gray-500 mt-2">{error}</p>
+              </motion.div>
+            ) : filteredAndSortedNGOs.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
