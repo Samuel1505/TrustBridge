@@ -275,10 +275,13 @@ export default function DonationModal({ isOpen, onClose, ngoName, ngoAddress }: 
 
                     {/* Balance Info */}
                     <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm mb-2">
                         <span className="text-gray-600">Your Balance</span>
                         <span className="font-semibold text-gray-900">{parseFloat(balance).toFixed(2)} cUSD</span>
                       </div>
+                      {amount && parseFloat(amount) > 0 && parseFloat(balance) < parseFloat(amount) && (
+                        <p className="text-xs text-red-600 mt-1">Insufficient balance</p>
+                      )}
                     </div>
 
                     {/* Approval Step */}
