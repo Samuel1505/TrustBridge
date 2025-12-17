@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, DollarSign, Calendar, Users, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Heart, DollarSign, Calendar, Users, ExternalLink, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
@@ -157,12 +157,22 @@ export default function DonorDashboardPage() {
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Donation History</h2>
-            <Link
-              href="/dashboard"
-              className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors"
-            >
-              Browse NGOs
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors"
+              >
+                Browse NGOs
+              </Link>
+            </div>
           </div>
 
           {isLoading ? (
