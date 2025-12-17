@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, formatEther } from 'ethers';
-import { DonationRouterContract } from '../abi';
+import { DonationRouterContract, NGORegistryContract } from '../abi';
 
 export interface DonorDonation {
   id: string;
@@ -64,14 +64,52 @@ export function useDonorDonations(address: string | null) {
         // Fetch total donated
         const totalDonated = await donationRouterContract.totalByDonor(address);
 
-        // Process donations
-        const processedDonations: DonorDonation[] = donorDonations.map((donation: any, index: number) => ({
-          id: index.toString(),
-          ngo: donation.ngo,
-          amount: parseFloat(formatEther(donation.amount)),
-          message: donation.message,
-          timestamp: new Date(Number(donation.timestamp) * 1000).toISOString(),
-        }));
+        // Fetch NGO names for each donation
+        const registryContract = new Contract(
+          NGORegistryContract.address,
+          NGORegistryContract.abi,
+          provider
+        );
+
+        // Process donations and fetch NGO names
+        const processedDonationsPromises = donorDonations.map(async (donation: any, index: number) => {
+          let ngoName: string | undefined;
+          try {
+            const ngoData = await registryContract.getNGO(donation.ngo);
+            // Try to fetch IPFS profile for name
+            if (ngoData.ipfsProfile && ngoData.ipfsProfile !== '') {
+              try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const ipfsUrl = `https://ipfs.io/ipfs/${ngoData.ipfsProfile}`;
+                const response = await fetch(ipfsUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (response.ok) {
+                  const profileData = await response.json();
+                  ngoName = profileData.name;
+                }
+              } catch (ipfsError) {
+                // Silently fail
+              }
+            }
+            if (!ngoName) {
+              ngoName = `NGO ${donation.ngo.slice(0, 6)}...${donation.ngo.slice(-4)}`;
+            }
+          } catch (err) {
+            ngoName = `NGO ${donation.ngo.slice(0, 6)}...${donation.ngo.slice(-4)}`;
+          }
+
+          return {
+            id: index.toString(),
+            ngo: donation.ngo,
+            amount: parseFloat(formatEther(donation.amount)),
+            message: donation.message,
+            timestamp: new Date(Number(donation.timestamp) * 1000).toISOString(),
+            ngoName,
+          };
+        });
+
+        const processedDonations = await Promise.all(processedDonationsPromises);
 
         // Sort by timestamp (newest first)
         processedDonations.sort((a, b) => 
