@@ -177,42 +177,9 @@ export function useNGO(address: string | null) {
           }
         }
 
-        // Fetch recent donations from DonationRouter
-        let recentDonations: any[] = [];
-        try {
-          const donationRouterContract = new Contract(
-            DonationRouterContract.address,
-            DonationRouterContract.abi,
-            provider
-          );
-          
-          const donationIds = await donationRouterContract.donationsByNGO(address);
-          if (donationIds && donationIds.length > 0) {
-            // Get the last 10 donation IDs
-            const last10Ids = donationIds.slice(-10).reverse();
-            const donationPromises = last10Ids.map(async (id: bigint) => {
-              try {
-                const donation = await donationRouterContract.getDonation(id);
-                return {
-                  id: id.toString(),
-                  donor: donation.donor,
-                  amount: parseFloat(formatEther(donation.amount)),
-                  message: donation.message,
-                  timestamp: new Date(Number(donation.timestamp) * 1000).toISOString(),
-                  txHash: '', // Would need to fetch from events
-                };
-              } catch (err) {
-                console.warn(`Failed to fetch donation ${id}:`, err);
-                return null;
-              }
-            });
-            
-            const donations = await Promise.all(donationPromises);
-            recentDonations = donations.filter((d): d is any => d !== null);
-          }
-        } catch (donationError) {
-          console.warn('Failed to fetch donations:', donationError);
-        }
+        // Note: Recent donations would be fetched from events or a separate hook
+        // For now, we'll leave it empty as fetching requires event indexing
+        const recentDonations: any[] = [];
 
         setNgo({
           ...ngoData,
