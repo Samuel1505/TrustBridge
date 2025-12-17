@@ -168,7 +168,8 @@ export default function NGOProfilePage() {
                     <p className="text-gray-400">No images available</p>
                   </div>
                 )}
-              </motion.div>
+              </div>
+            </motion.div>
 
             {/* Description */}
             <motion.div
